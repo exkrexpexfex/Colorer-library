@@ -299,4 +299,3 @@ void CharacterClass::fill()
 void CharacterClass::freeze()
 {
 }
-
