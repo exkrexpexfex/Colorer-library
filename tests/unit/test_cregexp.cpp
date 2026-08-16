@@ -545,6 +545,25 @@ TEST_CASE("CRegExp Colorer backtrace \\y", "[cregexp]")
     REQUIRE_FALSE(end.setRE(&end_re));
     REQUIRE(end.getError() == EError::EERROR);
   }
+
+  SECTION("numeric \\yN outside captured groups does not read uninitialized slots")
+  {
+    const auto start_re = ustr(u"/(foo)/");
+    const auto text = ustr(u"foo");
+    CRegExp start(&start_re);
+    REQUIRE(start.isOk());
+    SMatches start_match;
+    REQUIRE(start.parse(&text, &start_match));
+
+    const auto end_re = ustr(u"/\\yF/");
+    CRegExp end;
+    end.setBackTrace(&text, &start_match);
+    REQUIRE(end.setRE(&end_re));
+    SMatches end_match;
+    REQUIRE(end.parse(&text, &end_match));
+    REQUIRE(end_match.s[0] == 0);
+    REQUIRE(end_match.e[0] == 0);
+  }
 }
 
 TEST_CASE("CRegExp canStartWith", "[cregexp]")

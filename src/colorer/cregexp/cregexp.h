@@ -333,6 +333,7 @@ class CRegExp
   bool quickCheck(int toParse);
   bool isWordBoundary(int toParse);
   bool checkMetaSymbol(EMetaSymbols metaSymbol, int& toParse);
+  bool matchCopiedRange(const UnicodeString& src, int from, int to, int& toParse, bool icase) const;
   bool lowParse(SRegInfo* re, SRegInfo* prev, int toParse);
   bool parseRE(int toParse);
 

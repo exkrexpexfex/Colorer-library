@@ -928,6 +928,27 @@ void CRegExp::check_stack(bool res, SRegInfo** re, SRegInfo** prev, int* toParse
   *leftenter = ne.leftenter;
 }
 
+bool CRegExp::matchCopiedRange(const UnicodeString& src, int from, int to, int& toParse, bool icase) const
+{
+  // Unmatched groups are stored as -1,-1; the classic copy loop then does nothing.
+  if (from < 0 || to < 0)
+    return true;
+  const UnicodeString& pattern = *global_pattern;
+  for (int i = from; i < to; i++) {
+    if (toParse >= end)
+      return false;
+    if (icase) {
+      if (Character::toLowerCase(pattern[toParse]) != Character::toLowerCase(src[i]))
+        return false;
+    }
+    else if (pattern[toParse] != src[i]) {
+      return false;
+    }
+    toParse++;
+  }
+  return true;
+}
+
 void CRegExp::insert_stack(SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter, ReAction ifTrueReturn,
                            ReAction ifFalseReturn, SRegInfo** re2, SRegInfo** prev2, int toParse2)
 {
@@ -1059,61 +1080,43 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
 #ifdef COLORERMODE
           case EOps::ReBkTrace:
             sv = re->param0;
-            if (!backStr || !backTrace || sv == -1) {
+            if (!backStr || !backTrace || sv < 0 || sv >= MATCHES_NUM) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
-            br = false;
-            for (i = backTrace->s[sv]; i < backTrace->e[sv]; i++) {
-              if (toParse >= end || pattern[toParse] != (*backStr)[i]) {
-                check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-                br = true;
-                break;
-              }
-              toParse++;
-            }
-            if (br)
+            backTrace->topseSanitize(sv);
+            if (!matchCopiedRange(*backStr, backTrace->s[sv], backTrace->e[sv], toParse, false)) {
+              check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
+            }
             break;
           case EOps::ReBkTraceN:
             sv = re->param0;
-            if (!backStr || !backTrace || sv == -1) {
+            if (!backStr || !backTrace || sv < 0 || sv >= MATCHES_NUM) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
-            br = false;
-            for (i = backTrace->s[sv]; i < backTrace->e[sv]; i++) {
-              if (toParse >= end || Character::toLowerCase(pattern[toParse]) != Character::toLowerCase((*backStr)[i])) {
-                check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-                br = true;
-                break;
-              }
-              toParse++;
-            }
-            if (br)
+            backTrace->topseSanitize(sv);
+            if (!matchCopiedRange(*backStr, backTrace->s[sv], backTrace->e[sv], toParse, true)) {
+              check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
+            }
             break;
           case EOps::ReBkTraceName:
             sv = re->param0;
-            if (!backStr || !backTrace || sv == -1) {
+            if (!backStr || !backTrace || sv < 0 || sv >= NAMED_MATCHES_NUM) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
-            br = false;
-            for (i = backTrace->ns[sv]; i < backTrace->ne[sv]; i++) {
-              if (toParse >= end || pattern[toParse] != (*backStr)[i]) {
-                check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-                br = true;
-                break;
-              }
-              toParse++;
-            }
-            if (br)
+            backTrace->topnseSanitize(sv);
+            if (!matchCopiedRange(*backStr, backTrace->ns[sv], backTrace->ne[sv], toParse, false)) {
+              check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
+            }
             break;
           case EOps::ReBkTraceNName:
             sv = re->param0;
-            if (!backStr || !backTrace || sv == -1 || backTrace->cnMatch <= sv) {
+            if (!backStr || !backTrace || sv < 0 || sv >= NAMED_MATCHES_NUM || backTrace->cnMatch <= sv) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
@@ -1122,17 +1125,10 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
-            br = false;
-            for (i = backTrace->ns[sv]; i < backTrace->ne[sv]; i++) {
-              if (toParse >= end || Character::toLowerCase(pattern[toParse]) != Character::toLowerCase((*backStr)[i])) {
-                check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-                br = true;
-                break;
-              }
-              toParse++;
-            }
-            if (br)
+            if (!matchCopiedRange(*backStr, backTrace->ns[sv], backTrace->ne[sv], toParse, true)) {
+              check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
+            }
             break;
 #endif  // COLORERMODE
 
