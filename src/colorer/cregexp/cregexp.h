@@ -21,30 +21,23 @@
 #define NAMED_MATCHES_NUM 0x10
 
 enum class EOps {
-  ReBlockOps,
-  ReMul,        // *
-  RePlus,       // +
-  ReQuest,      // ?
-  ReNGMul,      // *?
-  ReNGPlus,     // +?
-  ReNGQuest,    // ??
-  ReRangeN,     // {n,}
-  ReRangeNM,    // {n,m}
-  ReNGRangeN,   // {n,}?
-  ReNGRangeNM,  // {n,m}?
+  ReBlockOps,   // sentinel: postfix operators follow
+  ReRangeN,     // {n,}  *  +
+  ReRangeNM,    // {n,m} ?
+  ReNGRangeN,   // {n,}? *? +?
+  ReNGRangeNM,  // {n,m}? ??
   ReOr,         // |
   ReBehind,     // ?#n
   ReNBehind,    // ?~n
   ReAhead,      // ?=
   ReNAhead,     // ?!
 
-  ReSymbolOps,
+  ReSymbolOps,  // sentinel: atoms follow
   ReEmpty,
   ReMetaSymb,       // \W \s \d ...
   ReSymb,           // a b c ...
   ReWord,           // word...
-  ReEnum,           // []
-  ReNEnum,          // [^]
+  ReEnum,           // [] [^]
   ReBrackets,       // (...)
   ReNamedBrackets,  // (?{name} ...)
 #ifdef COLORERMODE

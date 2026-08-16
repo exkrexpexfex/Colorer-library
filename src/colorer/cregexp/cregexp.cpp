@@ -40,7 +40,6 @@ SRegInfo::~SRegInfo()
   if (un.param)
     switch (op) {
       case EOps::ReEnum:
-      case EOps::ReNEnum:
         delete un.charclass;
         break;
       case EOps::ReWord:
@@ -186,8 +185,7 @@ void CRegExp::optimize()
       }
       break;
     }
-    if (next->op == EOps::ReSymb || next->op == EOps::ReWord ||
-        next->op == EOps::ReEnum || next->op == EOps::ReNEnum) {
+    if (next->op == EOps::ReSymb || next->op == EOps::ReWord || next->op == EOps::ReEnum) {
       firstNode = next;
     }
     break;
@@ -230,9 +228,8 @@ CRegExp::FirstChars CRegExp::firstCharsForNode(const SRegInfo* re) const
       else result.nullable = true;
       break;
     case EOps::ReEnum:
-    case EOps::ReNEnum:
       for (uint32_t ch = 0; ch < 128; ch++) {
-        if (re->un.charclass->contains(static_cast<wchar>(ch)) == (re->op == EOps::ReEnum)) {
+        if (re->un.charclass->contains(static_cast<wchar>(ch))) {
           result.mask[ch >> 6] |= uint64_t(1) << (ch & 63);
         }
       }
@@ -676,7 +673,6 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
       auto cc = UStr::createCharClass(expr, i, &endPos, ignoreCase);
       if (cc == nullptr)
         return EError::EENUM;
-      //      next->op = (exprn[i] == ReEnumS) ? ReEnum : ReNEnum;
       next->op = EOps::ReEnum;
       next->un.charclass = cc.release();
       i = endPos;
@@ -1053,17 +1049,6 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
             }
             toParse++;
             break;
-          case EOps::ReNEnum:
-            if (toParse >= end) {
-              check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-              continue;
-            }
-            if (re->un.charclass->contains(pattern[toParse])) {
-              check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-              continue;
-            }
-            toParse++;
-            break;
 #ifdef COLORERMODE
           case EOps::ReBkTrace:
             sv = re->param0;
@@ -1335,12 +1320,6 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
             leftenter = true;
             continue;
           case EOps::ReBlockOps:
-          case EOps::ReMul:
-          case EOps::RePlus:
-          case EOps::ReQuest:
-          case EOps::ReNGMul:
-          case EOps::ReNGPlus:
-          case EOps::ReNGQuest:
           case EOps::ReSymbolOps:
             break;
         }
@@ -1431,8 +1410,6 @@ bool CRegExp::canStartWith(wchar ch) const
       return matchChars(ch, (*firstNode->un.word)[0]);
     case EOps::ReEnum:
       return firstNode->un.charclass->contains(ch);
-    case EOps::ReNEnum:
-      return !firstNode->un.charclass->contains(ch);
     case EOps::ReMetaSymb:
       switch (firstNode->un.metaSymbol) {
         case EMetaSymbols::ReAnyChr:
@@ -1469,10 +1446,7 @@ inline bool CRegExp::quickCheck(int toParse)
     case EOps::ReWord:
       return toParse < end && matchChars((*global_pattern)[toParse], (*firstNode->un.word)[0]);
     case EOps::ReEnum:
-    case EOps::ReNEnum:
-      return toParse < end &&
-             (firstNode->un.charclass->contains((*global_pattern)[toParse]) ==
-              (firstNode->op == EOps::ReEnum));
+      return toParse < end && firstNode->un.charclass->contains((*global_pattern)[toParse]);
     case EOps::ReMetaSymb:
       switch (firstNode->un.metaSymbol) {
 #ifdef COLORERMODE
