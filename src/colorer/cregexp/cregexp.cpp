@@ -110,6 +110,9 @@ EError CRegExp::setRELow(const UnicodeString& expr)
 
   delete tree_root;
   tree_root = nullptr;
+  firstNode = nullptr;
+  firstCharMask = {};
+  firstCharMaskUseful = false;
   for (int bp = 0; bp < cnMatch; bp++) delete brnames[bp];
 
   cMatch = 0;

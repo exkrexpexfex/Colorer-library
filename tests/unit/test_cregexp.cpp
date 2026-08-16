@@ -583,6 +583,19 @@ TEST_CASE("CRegExp canStartWith", "[cregexp]")
     REQUIRE(re_cls.canStartWith('y'));
     REQUIRE_FALSE(re_cls.canStartWith('a'));
   }
+
+  SECTION("failed recompile does not leave a dangling first-char probe")
+  {
+    const auto good = ustr(u"/abc/");
+    const auto bad = ustr(u"/(abc/");
+    CRegExp re(&good);
+    REQUIRE(re.isOk());
+    REQUIRE(re.canStartWith('a'));
+    REQUIRE_FALSE(re.setRE(&bad));
+    REQUIRE_FALSE(re.isOk());
+    REQUIRE(re.canStartWith('a'));
+    REQUIRE(re.canStartWith('x'));
+  }
 }
 
 TEST_CASE("CRegExp stack reuse after clearRegExpStack", "[cregexp]")
