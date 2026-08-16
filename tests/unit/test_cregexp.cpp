@@ -134,6 +134,8 @@ TEST_CASE("CRegExp compilation errors", "[cregexp]")
         {u"/a{/", EError::EBRACKETS},
         {u"/+/", EError::EOP},
         {u"/{2}/", EError::EOP},
+        {u"/a{5,2}/", EError::EOP},
+        {u"/{5,2}/", EError::EOP},
         {u"/*/", EError::EOP},
         {u"/\\/", EError::ESYNTAX},
         {u"/\\y/", EError::ESYNTAX},

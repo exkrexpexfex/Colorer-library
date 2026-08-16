@@ -607,11 +607,12 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int from, i
         next->e = UnicodeTools::getNumber(&expr, comma + 1, en - comma - 1);
       else
         next->e = next->s;
-      if (next->e == -1)
+      if (next->s < 0)
         return EError::EOP;
-
       if (en - comma == 1)
         next->e = -1;
+      else if (next->e < next->s)
+        return EError::EOP;
       if (next->e == -1)
         next->op = nonGreedy ? EOps::ReNGRangeN : EOps::ReRangeN;
       else
