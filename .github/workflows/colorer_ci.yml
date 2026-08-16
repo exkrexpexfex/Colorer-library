@@ -73,7 +73,7 @@ jobs:
         run: mkdir -p _build
 
       - name: Get number of CPU cores
-        uses: SimenB/github-actions-cpu-cores@v2
+        uses: SimenB/github-actions-cpu-cores@v3
         id: cpu-cores
 
       - name: Configure CMake
@@ -123,6 +123,8 @@ jobs:
 
       - name: Add C++ build tools to PATH
         uses: ilammy/msvc-dev-cmd@v1
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
         with:
           arch: ${{ matrix.arch }}
 
@@ -141,7 +143,7 @@ jobs:
         run: mkdir -p _build
 
       - name: Get number of CPU cores
-        uses: SimenB/github-actions-cpu-cores@v2
+        uses: SimenB/github-actions-cpu-cores@v3
         id: cpu-cores
 
       - name: Configure CMake
