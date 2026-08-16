@@ -39,6 +39,28 @@ void require_no_match(const char16_t* pattern, const char16_t* text, bool moves 
   REQUIRE_FALSE(parse_re(re, str, match, moves, pos));
 }
 
+UnicodeString sequential_captures(int inner)
+{
+  UnicodeString pattern(u"/a");
+  for (int i = 0; i < inner; i++) {
+    pattern += UnicodeString(u"(x)");
+  }
+  pattern += UnicodeString(u"z/");
+  return pattern;
+}
+
+UnicodeString named_captures(int count)
+{
+  UnicodeString pattern(u"/");
+  for (int i = 0; i < count; i++) {
+    pattern += UnicodeString(u"(?{n");
+    pattern += UStr::to_unistr(i);
+    pattern += UnicodeString(u"}x)");
+  }
+  pattern += UnicodeString(u"/");
+  return pattern;
+}
+
 }  // namespace
 
 TEST_CASE("CRegExp compilation", "[cregexp]")
@@ -277,6 +299,54 @@ TEST_CASE("CRegExp groups and backreferences", "[cregexp]")
     REQUIRE(match.e[1] == 1);
     REQUIRE(match.s[2] == 1);
     REQUIRE(match.e[2] == 2);
+  }
+
+  SECTION("numeric groups beyond the slot limit stay non-capturing")
+  {
+    const auto ok_pattern = sequential_captures(MATCHES_NUM - 1);
+    UnicodeString ok_text(u"a");
+    for (int i = 0; i < MATCHES_NUM - 1; i++) {
+      ok_text += UnicodeString(u"x");
+    }
+    ok_text += UnicodeString(u"z");
+    CRegExp ok_re(&ok_pattern);
+    REQUIRE(ok_re.isOk());
+    SMatches ok_match;
+    REQUIRE(ok_re.parse(&ok_text, &ok_match));
+    REQUIRE(ok_match.cMatch == MATCHES_NUM);
+    REQUIRE(ok_match.s[0] == 0);
+    REQUIRE(ok_match.e[0] == ok_text.length());
+
+    const auto overflow = sequential_captures(MATCHES_NUM);
+    UnicodeString overflow_text(u"a");
+    for (int i = 0; i < MATCHES_NUM; i++) {
+      overflow_text += UnicodeString(u"x");
+    }
+    overflow_text += UnicodeString(u"z");
+    CRegExp overflow_re(&overflow);
+    REQUIRE(overflow_re.isOk());
+    SMatches overflow_match;
+    REQUIRE(overflow_re.parse(&overflow_text, &overflow_match));
+    REQUIRE(overflow_match.cMatch == MATCHES_NUM);
+    REQUIRE(overflow_match.s[0] == 0);
+    REQUIRE(overflow_match.e[0] == overflow_text.length());
+  }
+
+  SECTION("named groups beyond the slot limit stay non-capturing")
+  {
+    const auto ok_pattern = named_captures(NAMED_MATCHES_NUM);
+    CRegExp ok_re(&ok_pattern);
+    REQUIRE(ok_re.isOk());
+
+    const auto overflow = named_captures(NAMED_MATCHES_NUM + 1);
+    CRegExp overflow_re(&overflow);
+    REQUIRE(overflow_re.isOk());
+    const auto last_name_n = UStr::to_unistr(NAMED_MATCHES_NUM);
+    UnicodeString last_name(u"n");
+    last_name += last_name_n;
+    REQUIRE(overflow_re.getBracketNo(&last_name) == -1);
+    const auto first_name = ustr(u"n0");
+    REQUIRE(overflow_re.getBracketNo(&first_name) == 0);
   }
 
   SECTION("non-capturing (?:) does not create a group")

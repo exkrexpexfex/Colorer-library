@@ -675,8 +675,11 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
             brnames[cnMatch] = br_name;
             cnMatch++;
           }
-          else
+          else {
+            // HRC schemes may exceed the slot count; extra groups stay non-capturing
             delete br_name;
+            next->param0 = -1;
+          }
 #else
 #ifdef CHECKNAMES
           if (br_name->length() && namedMatches && namedMatches->getItem(br_name)) {
@@ -700,6 +703,8 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
           next->param0 = cMatch;
           cMatch++;
         }
+        else
+          next->param0 = -1;
         i += 1;
       }
       next->un.param = new SRegInfo;
