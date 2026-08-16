@@ -801,7 +801,7 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int from, i
 // parsing
 ////////////////////////////////////////////////////////////////////////////
 
-static bool isLineBreak(wchar_t c)
+static bool isLineBreak(wchar c)
 {
    return c == 0x0A || c == 0x0B || c == 0x0C || c == 0x0D || c == 0x85 || c == 0x2028 || c == 0x2029;
 }
