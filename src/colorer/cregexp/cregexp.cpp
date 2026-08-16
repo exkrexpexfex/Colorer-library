@@ -1,8 +1,6 @@
 #include "colorer/cregexp/cregexp.h"
-#include <cstring>
 
-StackElem* CRegExp::RegExpStack {nullptr};
-int CRegExp::RegExpStack_Size {0};
+std::vector<StackElem> CRegExp::RegExpStack;
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -953,18 +951,10 @@ bool CRegExp::matchCopiedRange(const UnicodeString& src, int from, int to, int& 
 void CRegExp::insert_stack(SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter, ReAction ifTrueReturn,
                            ReAction ifFalseReturn, SRegInfo** re2, SRegInfo** prev2, int toParse2)
 {
-  if (RegExpStack_Size == 0) {
-    CRegExp::RegExpStack = new StackElem[INIT_MEM_SIZE];
-    RegExpStack_Size = INIT_MEM_SIZE;
+  if (RegExpStack.size() == static_cast<size_t>(count_elem)) {
+    RegExpStack.resize(RegExpStack.empty() ? INIT_MEM_SIZE : RegExpStack.size() + MEM_INC);
   }
-  if (RegExpStack_Size == count_elem) {
-    RegExpStack_Size += MEM_INC;
-    StackElem* s = new StackElem[RegExpStack_Size];
-    memcpy(s, CRegExp::RegExpStack, count_elem * sizeof(StackElem));
-    delete[] CRegExp::RegExpStack;
-    CRegExp::RegExpStack = s;
-  }
-  StackElem& ne = CRegExp::RegExpStack[count_elem++];
+  StackElem& ne = CRegExp::RegExpStack[static_cast<size_t>(count_elem++)];
   ne.re = *re;
   ne.prev = *prev;
   ne.toParse = *toParse;
@@ -1576,9 +1566,7 @@ bool CRegExp::setPositionMoves(bool moves)
 
 void CRegExp::clearRegExpStack()
 {
-  CRegExp::RegExpStack_Size = 0;
-  delete[] CRegExp::RegExpStack;
-  CRegExp::RegExpStack = nullptr;
+  std::vector<StackElem>().swap(RegExpStack);
 }
 
 int CRegExp::getBracketNo(const UnicodeString* brname) const
