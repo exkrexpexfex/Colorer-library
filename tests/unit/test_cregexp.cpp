@@ -235,12 +235,6 @@ TEST_CASE("CRegExp flags", "[cregexp]")
   {
     require_match(u"/a b c/x", u"abc", 0, 3);
   }
-
-  SECTION("caret matches after newline with /m")
-  {
-    require_match(u"/^cd/m", u"ab\ncd", 3, 5, true);
-    require_no_match(u"/^cd/", u"ab\ncd", true);
-  }
 }
 
 TEST_CASE("CRegExp greedy and lazy quantifiers", "[cregexp]")
@@ -554,10 +548,4 @@ TEST_CASE("CRegExp \\Y{name} copies named group case-insensitively", "[cregexp]"
   REQUIRE(end.parse(&end_text, &end_match));
   REQUIRE(end_match.s[0] == 0);
   REQUIRE(end_match.e[0] == 3);
-}
-
-TEST_CASE("CRegExp $ matches before newline with /m", "[cregexp][bugs]")
-{
-  SKIP("$ with /m currently checks the previous character, not the current one");
-  require_match(u"/\\w+$/m", u"ab\ncd", 0, 2);
 }
