@@ -103,17 +103,22 @@ TEST_CASE("CRegExp compilation errors", "[cregexp]")
     REQUIRE(re.getError() == error);
   }
 
-  SECTION("malformed pattern does not compile")
+  SECTION("malformed pattern")
   {
-    // Unclosed constructs and dangling quantifiers currently collapse to EBRACKETS
-    // in setRELow when the compiler returns before filling endPos.
-    const auto pattern = GENERATE(as<const char16_t*>{}, u"/(abc/", u"/abc)/", u"/[abc/", u"/a{/",
-                                  u"/+/", u"/{2}/", u"/*/");
+    const auto [pattern, error] = GENERATE(table<const char16_t*, EError>({
+        {u"/(abc/", EError::EBRACKETS},
+        {u"/abc)/", EError::EBRACKETS},
+        {u"/[abc/", EError::EENUM},
+        {u"/a{/", EError::EBRACKETS},
+        {u"/+/", EError::EOP},
+        {u"/{2}/", EError::EOP},
+        {u"/*/", EError::EOP},
+    }));
     const auto pre = ustr(pattern);
     CRegExp re(&pre);
     INFO("pattern: " << UStr::to_stdstr(&pre));
     REQUIRE_FALSE(re.isOk());
-    REQUIRE(re.getError() != EError::EOK);
+    REQUIRE(re.getError() == error);
   }
 }
 
@@ -470,7 +475,7 @@ TEST_CASE("CRegExp Colorer backtrace \\y", "[cregexp]")
     const auto end_re = ustr(u"/\\y{n}/");
     CRegExp end;
     REQUIRE_FALSE(end.setRE(&end_re));
-    REQUIRE(end.getError() != EError::EOK);
+    REQUIRE(end.getError() == EError::EERROR);
   }
 }
 

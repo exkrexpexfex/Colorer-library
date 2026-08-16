@@ -163,11 +163,10 @@ EError CRegExp::setRELow(const UnicodeString& expr)
 
   int endPos;
   EError err = setStructs(tree_root->un.param, UnicodeString(expr, start, len), endPos);
-  if (endPos != len)
-    err = EError::EBRACKETS;
-
   if (err != EError::EOK)
     return err;
+  if (endPos != len)
+    return EError::EBRACKETS;
   optimize();
   return EError::EOK;
 }
