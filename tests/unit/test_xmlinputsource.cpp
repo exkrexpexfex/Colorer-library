@@ -1,4 +1,4 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_amalgamated.hpp>
 #include "colorer/Common.h"
 #include "colorer/utils/Environment.h"
 #include "colorer/xml/XmlInputSource.h"
@@ -10,14 +10,14 @@ TEST_CASE("Test create XmlInputSource")
 
   SECTION("Create XmlInputSource with not exists file")
   {
-    REQUIRE_THROWS_WITH(XmlInputSource(empty_string), Catch::Contains("path is empty"));
-    REQUIRE_THROWS_WITH(XmlInputSource(empty_string, nullptr), Catch::Contains("path is empty"));
-    REQUIRE_THROWS_WITH(XmlInputSource(empty_string, &empty_string), Catch::Contains("path is empty"));
+    REQUIRE_THROWS_WITH(XmlInputSource(empty_string), Catch::Matchers::ContainsSubstring("path is empty"));
+    REQUIRE_THROWS_WITH(XmlInputSource(empty_string, nullptr), Catch::Matchers::ContainsSubstring("path is empty"));
+    REQUIRE_THROWS_WITH(XmlInputSource(empty_string, &empty_string), Catch::Matchers::ContainsSubstring("path is empty"));
 
     auto non_exist_file = work_dir / "non_exist";
-    REQUIRE_THROWS_WITH(XmlInputSource(non_exist_file.c_str()), Catch::Contains("isn't regular file"));
-    REQUIRE_THROWS_WITH(XmlInputSource(non_exist_file.c_str(), nullptr), Catch::Contains("isn't regular file"));
-    REQUIRE_THROWS_WITH(XmlInputSource(non_exist_file.c_str(), &empty_string), Catch::Contains("isn't regular file"));
+    REQUIRE_THROWS_WITH(XmlInputSource(non_exist_file.c_str()), Catch::Matchers::ContainsSubstring("isn't regular file"));
+    REQUIRE_THROWS_WITH(XmlInputSource(non_exist_file.c_str(), nullptr), Catch::Matchers::ContainsSubstring("isn't regular file"));
+    REQUIRE_THROWS_WITH(XmlInputSource(non_exist_file.c_str(), &empty_string), Catch::Matchers::ContainsSubstring("isn't regular file"));
   }
 
   auto temp_path = work_dir / "data";
@@ -47,7 +47,7 @@ TEST_CASE("Test create XmlInputSource")
     std::unique_ptr<XmlInputSource> test_source;
 
     REQUIRE_NOTHROW(test_source = std::make_unique<XmlInputSource>("test1.xml", &u_test_file2));
-    REQUIRE_THROWS_WITH(test_source->createRelative("test3.xml"), Catch::Contains("isn't regular file"));
+    REQUIRE_THROWS_WITH(test_source->createRelative("test3.xml"), Catch::Matchers::ContainsSubstring("isn't regular file"));
   }
 
   SECTION("Create XmlInputSource with environment variable in path")
@@ -58,7 +58,7 @@ TEST_CASE("Test create XmlInputSource")
     UnicodeString path2("$COLORER_TEST_XML2/test2.xml");
 
     REQUIRE_NOTHROW(XmlInputSource(path1));
-    REQUIRE_THROWS_WITH(XmlInputSource(path2), Catch::Contains("$COLORER_TEST_XML2/test2.xml isn't regular file"));
+    REQUIRE_THROWS_WITH(XmlInputSource(path2), Catch::Matchers::ContainsSubstring("$COLORER_TEST_XML2/test2.xml isn't regular file"));
     REQUIRE_NOTHROW(XmlInputSource("test1.xml", &path1));
 #else
     colorer::Environment::setOSEnv("COLORER_TEST_XML1", temp_path.c_str());
@@ -66,7 +66,7 @@ TEST_CASE("Test create XmlInputSource")
     UnicodeString path2("%COLORER_TEST_XML2%/test2.xml");
 
     REQUIRE_NOTHROW(XmlInputSource(path1));
-    REQUIRE_THROWS_WITH(XmlInputSource(path2), Catch::Contains("%COLORER_TEST_XML2%\\test2.xml isn't regular file"));
+    REQUIRE_THROWS_WITH(XmlInputSource(path2), Catch::Matchers::ContainsSubstring("%COLORER_TEST_XML2%\\test2.xml isn't regular file"));
     REQUIRE_NOTHROW(XmlInputSource("test1.xml", &path1));
 #endif
   }
@@ -92,9 +92,9 @@ TEST_CASE("Work with path to zip: zip disabled")
 {
   UnicodeString path2(u"hrc/1.hrc");
   UnicodeString jar_path1(u"jar:colorer.jar!hrc/1.hrc");
-  REQUIRE_THROWS_WITH(XmlInputSource(jar_path1), Catch::Contains("zip input source not supported"));
-  REQUIRE_THROWS_WITH(XmlInputSource(jar_path1, nullptr), Catch::Contains("zip input source not supported"));
-  REQUIRE_THROWS_WITH(XmlInputSource(path2, &jar_path1), Catch::Contains("zip input source not supported"));
+  REQUIRE_THROWS_WITH(XmlInputSource(jar_path1), Catch::Matchers::ContainsSubstring("zip input source not supported"));
+  REQUIRE_THROWS_WITH(XmlInputSource(jar_path1, nullptr), Catch::Matchers::ContainsSubstring("zip input source not supported"));
+  REQUIRE_THROWS_WITH(XmlInputSource(path2, &jar_path1), Catch::Matchers::ContainsSubstring("zip input source not supported"));
 }
 #endif
 
@@ -166,15 +166,15 @@ TEST_CASE("Check expand paths to files from jar-URI")
   {
     UnicodeString bad_path_to_cpp(u"jar:common.zip/base/c.hrc");
     UnicodeString bad_full_path(u"jar:/home/user/base/hrc/common.zip/base/c.hrc");
-    REQUIRE_THROWS_WITH(LibXmlInputSource::getFullPathsToZip(bad_path_to_cpp), Catch::Contains("Bad jar uri format"));
+    REQUIRE_THROWS_WITH(LibXmlInputSource::getFullPathsToZip(bad_path_to_cpp), Catch::Matchers::ContainsSubstring("Bad jar uri format"));
     REQUIRE_THROWS_WITH(LibXmlInputSource::getFullPathsToZip("c-unix.ent.hrc", &bad_full_path),
-                        Catch::Contains("Bad jar uri format"));
+                        Catch::Matchers::ContainsSubstring("Bad jar uri format"));
 
     UnicodeString base_path(u"/home/user/base/hrc/proto.hrc");
     REQUIRE_THROWS_WITH(LibXmlInputSource::getFullPathsToZip(base_path),
-                        Catch::Contains("The path to the jar was not found"));
+                        Catch::Matchers::ContainsSubstring("The path to the jar was not found"));
     REQUIRE_THROWS_WITH(LibXmlInputSource::getFullPathsToZip("c-unix.ent.hrc", &base_path),
-                        Catch::Contains("The path to the jar was not found"));
+                        Catch::Matchers::ContainsSubstring("The path to the jar was not found"));
   }
 }
 
@@ -191,7 +191,7 @@ TEST_CASE("Create XmlInputSource to zip: zip enabled")
   REQUIRE_NOTHROW(XmlInputSource(u"c-unix.ent.hrc", &path_to_zip));
 
   UnicodeString full_path(u"jar:/home/user/base/hrc/common.zip!base/c.hrc");
-  REQUIRE_THROWS_WITH(XmlInputSource(full_path), Catch::Contains("isn't regular file"));
-  REQUIRE_THROWS_WITH(XmlInputSource(u"c-unix.ent.hrc", &full_path), Catch::Contains("isn't regular file"));
+  REQUIRE_THROWS_WITH(XmlInputSource(full_path), Catch::Matchers::ContainsSubstring("isn't regular file"));
+  REQUIRE_THROWS_WITH(XmlInputSource(u"c-unix.ent.hrc", &full_path), Catch::Matchers::ContainsSubstring("isn't regular file"));
 }
 #endif

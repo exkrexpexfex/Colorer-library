@@ -1,5 +1,5 @@
 #include <colorer/Exception.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_amalgamated.hpp>
 
 using Catch::Matchers::Equals;
 

@@ -1,4 +1,4 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_amalgamated.hpp>
 #include "colorer/utils/Environment.h"
 #include "colorer/xml/XmlReader.h"
 #include "test_common.h"
