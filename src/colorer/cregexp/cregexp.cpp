@@ -695,9 +695,9 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int from, i
     if (wsize > 1) {
       reafterword = resymb;
       resymb = reword;
-      UChar* wcword = new UChar[wsize];
+      auto* word = new UnicodeString();
       for (int idx = 0; idx < wsize; idx++) {
-        wcword[idx] = resymb->un.symbol;
+        word->append(resymb->un.symbol);
         SRegInfo* retmp = resymb;
         resymb = resymb->next;
         retmp->next = nullptr;
@@ -705,8 +705,7 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int from, i
           delete retmp;
       }
       reword->op = EOps::ReWord;
-      reword->un.word = new UnicodeString(wcword, wsize);
-      delete[] wcword;
+      reword->un.word = word;
       reword->next = reafterword;
       if (reafterword)
         reafterword->prev = reword;
