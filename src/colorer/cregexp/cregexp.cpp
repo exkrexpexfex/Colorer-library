@@ -1464,6 +1464,7 @@ inline bool CRegExp::parseRE(int pos)
   if (error != EError::EOK)
     return false;
 
+  count_elem = 0;
   int toParse = pos;
 
   if (!positionMoves && firstCharMaskUseful) {
