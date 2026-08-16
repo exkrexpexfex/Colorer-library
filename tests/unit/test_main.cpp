@@ -1,6 +1,4 @@
-#define CATCH_CONFIG_MAIN
-
-#include <catch2/catch.hpp>
+#include <catch2/catch_amalgamated.hpp>
 #include "test_common.h"
 
 std::unique_ptr<TestLogger> logger;

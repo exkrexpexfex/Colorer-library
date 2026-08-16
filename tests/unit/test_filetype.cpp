@@ -1,5 +1,5 @@
 #include <colorer/FileType.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_amalgamated.hpp>
 
 TEST_CASE("Create FileType and set base properties")
 {
