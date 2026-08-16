@@ -122,9 +122,7 @@ jobs:
           bootstrap-vcpkg.bat
 
       - name: Add C++ build tools to PATH
-        uses: ilammy/msvc-dev-cmd@v1
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+        uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: ${{ matrix.arch }}
 
@@ -185,7 +183,10 @@ jobs:
 
       - name: Install dependency
         # icu4c is already installed
-        run: brew install minizip ninja libxml2 icu4c
+        run: |
+          # Untap aws to silence Homebrew trust warnings
+          brew untap aws/tap
+          brew install minizip ninja libxml2 icu4c
 
       - name: Relink icu, because he is 'keg-only'
         run: brew link icu4c --force
