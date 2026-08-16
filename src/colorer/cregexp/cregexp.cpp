@@ -128,11 +128,10 @@ EError CRegExp::setRELow(const UnicodeString& expr)
 #endif
   endChange = startChange = false;
   int start = 0;
-  while (Character::isWhitespace(expr[start])) start++;
-  if (expr[start] == '/')
-    start++;
-  else
+  while (start < len && Character::isWhitespace(expr[start])) start++;
+  if (start >= len || expr[start] != '/')
     return EError::ESYNTAX;
+  start++;
 
   bool ok = false;
   ignoreCase = extend = singleLine = multiLine = false;
@@ -369,6 +368,8 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
     }
     // Escape symbol
     if (expr[i] == '\\') {
+      if (i + 1 >= expr.length())
+        return EError::ESYNTAX;
       int blen;
       switch (expr[i + 1]) {
         case 'd':
@@ -440,6 +441,8 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
         case 'y':
         case 'Y':
           next->op = (expr[i + 1] == 'y' ? EOps::ReBkTrace : EOps::ReBkTraceN);
+          if (i + 2 >= expr.length())
+            return EError::ESYNTAX;
           next->param0 = UnicodeTools::getHex(expr[i + 2]);
           if (next->param0 != -1) {
             i++;
@@ -464,6 +467,8 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
 
         case 'p':  // \p{name}
         {
+          if (i + 2 >= expr.length())
+            return EError::ESYNTAX;
           next->op = EOps::ReBkBrackName;
           auto br_name = UnicodeTools::getCurlyContent(expr, i + 2);
           if (br_name == nullptr)
@@ -1174,12 +1179,17 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
           case EOps::ReBkTraceNName:
 #ifndef NAMED_MATCHES_IN_HASH
             sv = re->param0;
-            if (!backStr || !backTrace || sv == -1) {
+            if (!backStr || !backTrace || sv == -1 || backTrace->cnMatch <= sv) {
+              check_stack(false, &re, &prev, &toParse, &leftenter, &action);
+              continue;
+            }
+            backTrace->topnseSanitize(sv);
+            if (backTrace->ns[sv] == -1 || backTrace->ne[sv] == -1) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
             br = false;
-            for (i = backTrace->s[sv]; i < backTrace->e[sv]; i++) {
+            for (i = backTrace->ns[sv]; i < backTrace->ne[sv]; i++) {
               if (toParse >= end || Character::toLowerCase(pattern[toParse]) != Character::toLowerCase((*backStr)[i])) {
                 check_stack(false, &re, &prev, &toParse, &leftenter, &action);
                 br = true;

@@ -113,6 +113,10 @@ TEST_CASE("CRegExp compilation errors", "[cregexp]")
         {u"/+/", EError::EOP},
         {u"/{2}/", EError::EOP},
         {u"/*/", EError::EOP},
+        {u"/\\/", EError::ESYNTAX},
+        {u"/\\y/", EError::ESYNTAX},
+        {u"/\\p/", EError::ESYNTAX},
+        {u"   ", EError::ESYNTAX},
     }));
     const auto pre = ustr(pattern);
     CRegExp re(&pre);
@@ -531,10 +535,8 @@ TEST_CASE("CRegExp stack reuse after clearRegExpStack", "[cregexp]")
   REQUIRE(match.e[0] == 6);
 }
 
-TEST_CASE("CRegExp \\Y{name} copies named group case-insensitively", "[cregexp][bugs]")
+TEST_CASE("CRegExp \\Y{name} copies named group case-insensitively", "[cregexp]")
 {
-  SKIP("\\Y{name} currently reads numeric s/e instead of ns/ne");
-
   const auto start_re = ustr(u"/(x)(?{n}Foo)/");
   const auto start_text = ustr(u"xFoo");
   CRegExp start(&start_re);
