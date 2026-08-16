@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup vcpkg
         run: |
@@ -39,6 +39,8 @@ jobs:
 
       - name: Add C++ build tools to PATH
         uses: ilammy/msvc-dev-cmd@v1
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
         with:
           arch: ${{ matrix.arch }}
 

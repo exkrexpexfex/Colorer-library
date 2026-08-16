@@ -11,14 +11,14 @@ jobs:
     steps:
 
       - name: 'Login to GitHub Container Registry'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ secrets.PACKAGES_GITHUB_USER }}
           password: ${{ secrets.PACKAGES_GITHUB_TOKEN }}
 
       - name: Build and push base image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           file: ./ci/Dockerfile-base
           push: true

@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install dependency
         run: sudo apt-get -y install ninja-build libicu-dev libxml2-dev zlib1g-dev libminizip-dev
@@ -51,7 +51,7 @@ jobs:
           tar -czvf ${{ env.colorer_name }} -C ./install/colorer/bin colorer
 
       - name: Upload result to cache
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: result-linux
           path: ./build/*.tar.gz
@@ -76,10 +76,12 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Add C++ build tools to PATH
         uses: ilammy/msvc-dev-cmd@v1
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
         with:
           arch: ${{ matrix.arch }}
 
@@ -138,7 +140,7 @@ jobs:
           7z a ${{ env.colorer_name }} ./install/colorer/bin/colorer.exe
 
       - name: Upload result to cache
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: result-${{ matrix.arch }}
           path: ./build/*.7z
@@ -150,10 +152,10 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download result
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: result
           pattern: result-*
