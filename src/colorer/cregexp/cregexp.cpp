@@ -139,7 +139,8 @@ EError CRegExp::setRELow(const UnicodeString& expr)
   tree_root->param0 = cMatch++;
 
   int endPos;
-  EError err = setStructs(tree_root->un.param, UnicodeString(expr, start, len), endPos);
+  UnicodeString body(expr, start, len);
+  EError err = setStructs(tree_root->un.param, body, 0, len, endPos);
   if (err != EError::EOK)
     return err;
   if (endPos != len)
@@ -316,27 +317,27 @@ CRegExp::FirstChars CRegExp::analyzeFirstChars(const SRegInfo* re) const
   return result;
 }
 
-EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos)
+EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int from, int to, int& retPos)
 {
   SRegInfo *next, *temp;
 
   retPos = 0;
-  if (!expr.length())
+  if (from >= to)
     return EError::EOK;
   retPos = -1;
 
   next = re;
-  for (int i = 0; i < expr.length(); i++) {
+  for (int i = from; i < to; i++) {
     // simple character
     if (extend && Character::isWhitespace(expr[i]))
       continue;
     // context return
     if (expr[i] == ')') {
-      retPos = i;
+      retPos = i - from;
       break;
     }
     // next element
-    if (i != 0) {
+    if (i != from) {
       next->next = new SRegInfo;
       next->next->parent = next->parent;
       next->next->prev = next;
@@ -344,7 +345,7 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
     }
     // Escape symbol
     if (expr[i] == '\\') {
-      if (i + 1 >= expr.length())
+      if (i + 1 >= to)
         return EError::ESYNTAX;
       int blen;
       switch (expr[i + 1]) {
@@ -416,7 +417,7 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
         case 'y':
         case 'Y':
           next->op = (expr[i + 1] == 'y' ? EOps::ReBkTrace : EOps::ReBkTraceN);
-          if (i + 2 >= expr.length())
+          if (i + 2 >= to)
             return EError::ESYNTAX;
           next->param0 = UnicodeTools::getHex(expr[i + 2]);
           if (next->param0 != -1) {
@@ -441,7 +442,7 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
 
         case 'p':  // \p{name}
         {
-          if (i + 2 >= expr.length())
+          if (i + 2 >= to)
             return EError::ESYNTAX;
           next->op = EOps::ReBkBrackName;
           auto br_name = UnicodeTools::getCurlyContent(expr, i + 2);
@@ -496,7 +497,7 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
     next->un.param = nullptr;
     next->param0 = 0;
 
-    if (expr.length() > i + 2) {
+    if (to > i + 2) {
       if (expr[i] == '?' && expr[i + 1] == '#' && expr[i + 2] >= '0' && expr[i + 2] <= '9') {
         next->op = EOps::ReBehind;
         next->param0 = UnicodeTools::getHex(expr[i + 2]);
@@ -510,7 +511,7 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
         continue;
       }
     }
-    if (expr.length() > i + 1) {
+    if (to > i + 1) {
       if (expr[i] == '*' && expr[i + 1] == '?') {
         next->op = EOps::ReNGRangeN;
         next->s = 0;
@@ -570,8 +571,8 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
       int comma = -1;
       bool nonGreedy = false;
       int j;
-      for (j = i; j < expr.length(); j++) {
-        if (expr.length() > j + 1 && expr[j] == '}' && expr[j + 1] == '?') {
+      for (j = i; j < to; j++) {
+        if (to > j + 1 && expr[j] == '}' && expr[j + 1] == '?') {
           en = j;
           nonGreedy = true;
           j++;
@@ -608,12 +609,12 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
     // ( ... )
     if (expr[i] == '(') {
       // perl-like "uncaptured" brackets
-      if (expr.length() >= i + 2 && expr[i + 1] == '?' && expr[i + 2] == ':') {
+      if (to >= i + 2 && expr[i + 1] == '?' && expr[i + 2] == ':') {
         next->op = EOps::ReNamedBrackets;
         next->param0 = -1;
         i += 3;
       }
-      else if (expr.length() > i + 2 && expr[i + 1] == '?' && expr[i + 2] == '{') {
+      else if (to > i + 2 && expr[i + 1] == '?' && expr[i + 2] == '{') {
         // named bracket
         next->op = EOps::ReNamedBrackets;
         auto s_curly = UnicodeTools::getCurlyContent(expr, i + 2);
@@ -652,8 +653,8 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
       next->un.param = new SRegInfo;
       next->un.param->parent = next;
       int endPos;
-      EError err = setStructs(next->un.param, UnicodeString(expr, i), endPos);
-      if (expr.length() - i - endPos == 0)
+      EError err = setStructs(next->un.param, expr, i, to, endPos);
+      if (to - i - endPos == 0)
         return EError::EBRACKETS;
       if (err != EError::EOK)
         return err;
@@ -781,7 +782,7 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
     next = next->next;
   }
   if (retPos == -1)
-    retPos = expr.length();
+    retPos = to - from;
   return EError::EOK;
 }
 

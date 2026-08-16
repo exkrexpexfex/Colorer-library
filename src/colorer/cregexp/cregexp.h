@@ -319,7 +319,7 @@ class CRegExp
 
   void init();
   EError setRELow(const UnicodeString& re);
-  EError setStructs(SRegInfo*&, const UnicodeString& expr, int& endPos);
+  EError setStructs(SRegInfo*&, const UnicodeString& expr, int from, int to, int& endPos);
 
   bool matchChars(wchar one, wchar another) const;
   struct FirstChars
