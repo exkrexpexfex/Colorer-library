@@ -34,19 +34,29 @@ SRegInfo::SRegInfo()
 SRegInfo::~SRegInfo()
 {
   delete next;
-  if (un.param)
-    switch (op) {
-      case EOps::ReEnum:
-        delete un.charclass;
-        break;
-      case EOps::ReWord:
-        delete un.word;
-        break;
-      default:
-        if (op > EOps::ReBlockOps && (op < EOps::ReSymbolOps || op == EOps::ReBrackets || op == EOps::ReNamedBrackets))
-          delete un.param;
-        break;
-    }
+  switch (op) {
+    case EOps::ReEnum:
+      delete un.charclass;
+      break;
+    case EOps::ReWord:
+      delete un.word;
+      break;
+    case EOps::ReBrackets:
+    case EOps::ReNamedBrackets:
+    case EOps::ReOr:
+    case EOps::ReAhead:
+    case EOps::ReNAhead:
+    case EOps::ReBehind:
+    case EOps::ReNBehind:
+    case EOps::ReRangeN:
+    case EOps::ReRangeNM:
+    case EOps::ReNGRangeN:
+    case EOps::ReNGRangeNM:
+      delete un.param;
+      break;
+    default:
+      break;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////
