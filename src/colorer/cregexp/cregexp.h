@@ -117,6 +117,10 @@ class SRegInfo
  public:
   SRegInfo();
   ~SRegInfo();
+  SRegInfo(const SRegInfo&) = delete;
+  SRegInfo& operator=(const SRegInfo&) = delete;
+  SRegInfo(SRegInfo&&) = delete;
+  SRegInfo& operator=(SRegInfo&&) = delete;
 
   union {
     EMetaSymbols metaSymbol;
@@ -233,29 +237,33 @@ class CRegExp
   */
   CRegExp(const UnicodeString* text);
   ~CRegExp();
+  CRegExp(const CRegExp&) = delete;
+  CRegExp& operator=(const CRegExp&) = delete;
+  CRegExp(CRegExp&&) = delete;
+  CRegExp& operator=(CRegExp&&) = delete;
 
   /**
     Is compilied RE well-formed.
   */
-  bool isOk();
+  bool isOk() const;
 
   /**
     Returns information about RE compilation error.
   */
-  EError getError();
+  EError getError() const;
 
   /**
     Tells RE parser, that it must make moves on tested string while RE matching.
   */
   bool setPositionMoves(bool moves);
   /**
-    Returns count of named brackets.
+    Returns named bracket index, or -1 if the name is unknown.
   */
-  int getBracketNo(const UnicodeString* brname);
+  int getBracketNo(const UnicodeString* brname) const;
   /**
-    Returns named bracked name by it's index.
+    Returns named bracket name by its index. Owned by this CRegExp.
   */
-  UnicodeString* getBracketName(int no);
+  const UnicodeString* getBracketName(int no) const;
 #ifdef COLORERMODE
   bool setBackRE(CRegExp* bkre);
   /**
@@ -265,7 +273,7 @@ class CRegExp
   /**
     Returns current RE object, used for backreferences with \y \Y operators.
   */
-  bool getBackTrace(const UnicodeString** str, SMatches** trace);
+  bool getBackTrace(const UnicodeString** str, SMatches** trace) const;
 #endif
   /**
     Compiles specified regular expression and drops all

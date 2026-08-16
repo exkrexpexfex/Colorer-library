@@ -1527,11 +1527,11 @@ bool CRegExp::setRE(const UnicodeString* re)
   error = setRELow(*re);
   return error == EError::EOK;
 }
-bool CRegExp::isOk()
+bool CRegExp::isOk() const
 {
   return error == EError::EOK;
 }
-EError CRegExp::getError()
+EError CRegExp::getError() const
 {
   return error;
 }
@@ -1549,14 +1549,14 @@ void CRegExp::clearRegExpStack()
   CRegExp::RegExpStack = nullptr;
 }
 
-int CRegExp::getBracketNo(const UnicodeString* brname)
+int CRegExp::getBracketNo(const UnicodeString* brname) const
 {
   for (int brn = 0; brn < cnMatch; brn++)
     if (UStr::caseCompare(*brname, *brnames[brn]) == 0)
       return brn;
   return -1;
 }
-UnicodeString* CRegExp::getBracketName(int no)
+const UnicodeString* CRegExp::getBracketName(int no) const
 {
   if (no >= cnMatch)
     return nullptr;
@@ -1575,7 +1575,7 @@ bool CRegExp::setBackTrace(const UnicodeString* str, SMatches* trace)
   backStr = str;
   return true;
 }
-bool CRegExp::getBackTrace(const UnicodeString** str, SMatches** trace)
+bool CRegExp::getBackTrace(const UnicodeString** str, SMatches** trace) const
 {
   *str = backStr;
   *trace = backTrace;
