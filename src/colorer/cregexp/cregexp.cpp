@@ -105,6 +105,7 @@ CRegExp::~CRegExp()
 
 bool CRegExp::matchChars(wchar one, wchar another) const
 {
+  // сознательное упрощение. правильнее дополнительно сравнивать toUpperCase, т.к. для Turkish I/ı и части Unicode это разное поведение
   return one == another ||
     (ignoreCase && Character::toLowerCase(one) == Character::toLowerCase(another));
 }
