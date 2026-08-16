@@ -3,8 +3,8 @@
 
 #include "colorer/parsers/HrcLibraryImpl.h"
 
-#if !defined COLORERMODE || defined NAMED_MATCHES_IN_HASH
-#error need (COLORERMODE & !NAMED_MATCHES_IN_HASH) in cregexp
+#if !defined COLORERMODE
+#error need COLORERMODE in cregexp
 #endif
 
 #define MATCH_NOTHING 0

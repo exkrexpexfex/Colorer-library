@@ -20,7 +20,6 @@ void SMatches::topseSanitize(int cur)
     }
 }
 
-#if !defined NAMED_MATCHES_IN_HASH
 void SMatches::topnseSanitize(int cur)
 {
     while (topnse < cur) {
@@ -29,7 +28,6 @@ void SMatches::topnseSanitize(int cur)
       ne[topnse] = -1;
     }
 }
-#endif
 
 
 SRegInfo::SRegInfo()
@@ -48,12 +46,6 @@ SRegInfo::~SRegInfo()
       case EOps::ReWord:
         delete un.word;
         break;
-#ifdef NAMED_MATCHES_IN_HASH
-      case EOps::ReNamedBrackets:
-      case EOps::ReBkBrackName:
-        if (namedata)
-          delete namedata;
-#endif
       default:
         if (op > EOps::ReBlockOps && (op < EOps::ReSymbolOps || op == EOps::ReBrackets || op == EOps::ReNamedBrackets))
           delete un.param;
@@ -78,11 +70,7 @@ void CRegExp::init()
   backStr = nullptr;
   backTrace = nullptr;
 #endif
-#ifndef NAMED_MATCHES_IN_HASH
   cnMatch = 0;
-#else
-  namedMatches = 0;
-#endif
   count_elem = 0;
 }
 CRegExp::CRegExp()
@@ -98,9 +86,7 @@ CRegExp::CRegExp(const UnicodeString* text)
 CRegExp::~CRegExp()
 {
   delete tree_root;
-#ifndef NAMED_MATCHES_IN_HASH
   for (int bp = 0; bp < cnMatch; bp++) delete brnames[bp];
-#endif
 }
 
 bool CRegExp::matchChars(wchar one, wchar another) const
@@ -118,14 +104,10 @@ EError CRegExp::setRELow(const UnicodeString& expr)
 
   delete tree_root;
   tree_root = nullptr;
-#ifndef NAMED_MATCHES_IN_HASH
   for (int bp = 0; bp < cnMatch; bp++) delete brnames[bp];
-#endif
 
   cMatch = 0;
-#ifndef NAMED_MATCHES_IN_HASH
   cnMatch = 0;
-#endif
   endChange = startChange = false;
   int start = 0;
   while (start < len && Character::isWhitespace(expr[start])) start++;
@@ -437,7 +419,6 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
           next->op = EOps::ReMetaSymb;
           next->un.metaSymbol = EMetaSymbols::ReEnd;
           break;
-#ifndef NAMED_MATCHES_IN_HASH
         case 'y':
         case 'Y':
           next->op = (expr[i + 1] == 'y' ? EOps::ReBkTrace : EOps::ReBkTraceN);
@@ -463,7 +444,6 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
           }
           break;
 #endif  // COLORERMODE
-#endif  // NAMED_MATCHES_IN_HASH
 
         case 'p':  // \p{name}
         {
@@ -474,17 +454,9 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
           if (br_name == nullptr)
             return EError::ESYNTAX;
           blen = br_name->length();
-#ifndef NAMED_MATCHES_IN_HASH
           next->param0 = getBracketNo(br_name.get());
           if (next->param0 == -1)
             return EError::ESYNTAX;
-#else
-          if (br_name->length() && namedMatches && !namedMatches->getItem(br_name)) {
-            return EBRACKETS;
-          }
-          next->param0 = 0;
-          next->namedata = new UnicodeString(br_name);
-#endif
           i += blen + 2;
         } break;
         default:
@@ -663,13 +635,6 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
           delete br_name;
         }
         else {
-#ifndef NAMED_MATCHES_IN_HASH
-#ifdef CHECKNAMES
-          if (getBracketNo(br_name) != -1) {
-            delete br_name;
-            return EError::EBRACKETS;
-          }
-#endif
           if (cnMatch < NAMED_MATCHES_NUM) {
             next->param0 = cnMatch;
             brnames[cnMatch] = br_name;
@@ -680,20 +645,6 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
             delete br_name;
             next->param0 = -1;
           }
-#else
-#ifdef CHECKNAMES
-          if (br_name->length() && namedMatches && namedMatches->getItem(br_name)) {
-            delete br_name;
-            return EError::EBRACKETS;
-          }
-#endif
-          next->param0 = 0;
-          next->namedata = br_name;
-          if (namedMatches) {
-            SMatch mt = {-1, -1};
-            namedMatches->setItem(br_name, mt);
-          }
-#endif
         }
         i += blen + 4;
       }
@@ -1047,16 +998,11 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
                 matches->s[re->param0] = matches->e[re->param0];
             }
             else {
-#ifndef NAMED_MATCHES_IN_HASH
               matches->topnseSanitize(re->param0);
               matches->ns[re->param0] = re->s;
               matches->ne[re->param0] = toParse;
               if (matches->ne[re->param0] < matches->ns[re->param0])
                 matches->ns[re->param0] = matches->ne[re->param0];
-#else
-              SMatch mt = {re->s, toParse};
-              namedMatches->setItem(re->namedata, mt);
-#endif
             }
             break;
           case EOps::ReSymb:
@@ -1156,7 +1102,6 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
               continue;
             break;
           case EOps::ReBkTraceName:
-#ifndef NAMED_MATCHES_IN_HASH
             sv = re->param0;
             if (!backStr || !backTrace || sv == -1) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
@@ -1174,15 +1119,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
             if (br)
               continue;
             break;
-#else
-            // !!!;
-            {
-              check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-              continue;
-            }
-#endif  // NAMED_MATCHES_IN_HASH
           case EOps::ReBkTraceNName:
-#ifndef NAMED_MATCHES_IN_HASH
             sv = re->param0;
             if (!backStr || !backTrace || sv == -1 || backTrace->cnMatch <= sv) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
@@ -1205,17 +1142,9 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
             if (br)
               continue;
             break;
-#else
-            // !!;
-            {
-              check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-              continue;
-            }
-#endif  // NAMED_MATCHES_IN_HASH
 #endif  // COLORERMODE
 
           case EOps::ReBkBrackName:
-#ifndef NAMED_MATCHES_IN_HASH
             sv = re->param0;
             if (sv == -1 || cnMatch <= sv) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
@@ -1238,30 +1167,6 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
             if (br)
               continue;
             break;
-#else
-          {
-            SMatch* mt = namedMatches->getItem(re->namedata);
-            if (!mt) {
-              check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-              continue;
-            }
-            if (mt->s == -1 || mt->e == -1) {
-              check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-              continue;
-            }
-            br = false;
-            for (i = mt->s; i < mt->e; i++) {
-              if (toParse >= end || pattern[toParse] != pattern[i]) {
-                check_stack(false, &re, &prev, &toParse, &leftenter, &action);
-                br = true;
-                break;
-              }
-              toParse++;
-            }
-            if (br)
-              continue;
-          } break;
-#endif  // NAMED_MATCHES_IN_HASH
 
           case EOps::ReBkBrack:
             sv = re->param0;
@@ -1603,16 +1508,12 @@ inline bool CRegExp::parseRE(int pos)
 
   matches->reset();
   matches->cMatch = cMatch;
-#ifndef NAMED_MATCHES_IN_HASH
   matches->cnMatch = cnMatch;
-#endif
   do {
     // stack=null;
     if (lowParse(tree_root, nullptr, toParse)) {
       matches->topseSanitize(cMatch - 1);
-#ifndef NAMED_MATCHES_IN_HASH
       matches->topnseSanitize(cnMatch - 1);
-#endif
       return true;
     }
     if (!positionMoves)
@@ -1622,13 +1523,8 @@ inline bool CRegExp::parseRE(int pos)
   return false;
 }
 
-bool CRegExp::parse(const UnicodeString* str, int pos, int eol, SMatches* mtch
-#ifdef NAMED_MATCHES_IN_HASH
-                    ,
-                    PMatchHash nmtch
-#endif
-                    ,
-                    int soScheme, int posMoves)
+bool CRegExp::parse(const UnicodeString* str, int pos, int eol, SMatches* mtch, int soScheme,
+                    int posMoves)
 {
   bool nms = positionMoves;
   if (posMoves != -1)
@@ -1639,20 +1535,12 @@ bool CRegExp::parse(const UnicodeString* str, int pos, int eol, SMatches* mtch
   global_pattern = str;
   end = eol;
   matches = mtch;
-#ifdef NAMED_MATCHES_IN_HASH
-  namedMatches = nmtch;
-#endif
   bool result = parseRE(pos);
   positionMoves = nms;
   return result;
 }
 
-bool CRegExp::parse(const UnicodeString* str, SMatches* mtch
-#ifdef NAMED_MATCHES_IN_HASH
-                    ,
-                    PMatchHash nmtch
-#endif
-)
+bool CRegExp::parse(const UnicodeString* str, SMatches* mtch)
 {
   end = str->length();
   global_pattern = str;
@@ -1660,9 +1548,6 @@ bool CRegExp::parse(const UnicodeString* str, SMatches* mtch
   schemeStart = 0;
 #endif
   matches = mtch;
-#ifdef NAMED_MATCHES_IN_HASH
-  namedMatches = nmtch;
-#endif
   return parseRE(0);
 }
 
@@ -1672,15 +1557,7 @@ bool CRegExp::parse(const UnicodeString* str, SMatches* mtch
 bool CRegExp::setRE(const UnicodeString* re)
 {
   error = EError::EERROR;
-#ifdef NAMED_MATCHES_IN_HASH
-  PMatchHash oldnamedMatches = namedMatches;
-  SMatchHash tmpMatchHash;
-  namedMatches = &tmpMatchHash;
   error = setRELow(*re);
-  namedMatches = oldnamedMatches;
-#else
-  error = setRELow(*re);
-#endif
   return error == EError::EOK;
 }
 bool CRegExp::isOk()
@@ -1705,7 +1582,6 @@ void CRegExp::clearRegExpStack()
   CRegExp::RegExpStack = nullptr;
 }
 
-#ifndef NAMED_MATCHES_IN_HASH
 int CRegExp::getBracketNo(const UnicodeString* brname)
 {
   for (int brn = 0; brn < cnMatch; brn++)
@@ -1719,7 +1595,6 @@ UnicodeString* CRegExp::getBracketName(int no)
     return nullptr;
   return brnames[no];
 }
-#endif
 
 #ifdef COLORERMODE
 bool CRegExp::setBackRE(CRegExp* bkre)

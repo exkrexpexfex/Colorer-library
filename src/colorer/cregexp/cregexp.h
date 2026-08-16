@@ -15,43 +15,10 @@
 /// regexp compatibility mode
 #define COLORERMODE
 
-/// use hashes for saving named brackets
-//#define NAMED_MATCHES_IN_HASH
-
-/// check duplicate brackets
-//#define CHECKNAMES
-
-#if defined COLORERMODE && defined NAMED_MATCHES_IN_HASH
-#error COLORERMODE && NAMED_MATCHES_IN_HASH not realyzed yet
-#endif
-
 /// numeric matches num
 #define MATCHES_NUM 0x10
-
-#if !defined NAMED_MATCHES_IN_HASH
 // number of named brackets (access through SMatches.ns)
 #define NAMED_MATCHES_NUM 0x10
-#endif
-
-#ifdef NAMED_MATCHES_IN_HASH
-struct SMatch
-{
-  int s, e;
-};
-// you can redefine this class
-typedef class SMatchHash
-{
- public:
-  SMatch* setItem(const UnicodeString* name, SMatch& smatch)
-  {
-    return nullptr;
-  };
-  SMatch* getItem(const UnicodeString* name)
-  {
-    return nullptr;
-  };
-} * PMatchHash;
-#endif
 
 enum class EOps {
   ReBlockOps,
@@ -131,11 +98,9 @@ struct SMatches
     s[0] = e[0] = -1;
     cMatch = 0;
     topse = 0;
-#if !defined NAMED_MATCHES_IN_HASH
     ns[0] = ne[0] = -1;
     cnMatch = 0;
     topnse = 0;
-#endif
   }
 
   void topseSanitize(int cur); // use before accessing s[cur]/e[cur] to ensure their lazy inited to -1
@@ -144,13 +109,11 @@ struct SMatches
   int topse;
   int cMatch;
 
-#if !defined NAMED_MATCHES_IN_HASH
   void topnseSanitize(int cur); // use before accessing ns[cur]/ne[cur] to ensure their lazy inited to -1
   int ns[NAMED_MATCHES_NUM];
   int ne[NAMED_MATCHES_NUM];
   int topnse;
   int cnMatch;
-#endif
 };
 
 /** Regular expressions internal tree node.
@@ -169,9 +132,6 @@ class SRegInfo
     CharacterClass* charclass;
     SRegInfo* param;
   } un;
-#if defined NAMED_MATCHES_IN_HASH
-  UnicodeString* namedata;
-#endif
   SRegInfo* parent = nullptr;
   SRegInfo* next = nullptr;
   SRegInfo* prev = nullptr;
@@ -319,15 +279,6 @@ class CRegExp
     previous structures.
   */
   bool setRE(const UnicodeString* re);
-#ifdef NAMED_MATCHES_IN_HASH
-  /** Runs RE parser against input string @c str
-   */
-  bool parse(const UnicodeString* str, SMatches* mtch, SMatchHash* nmtch = nullptr);
-  /** Runs RE parser against input string @c str
-   */
-  bool parse(const UnicodeString* str, int pos, int eol, SMatches* mtch,
-             SMatchHash* nmtch = nullptr, int soscheme = 0, int moves = -1);
-#else
   /** Runs RE parser against input string @c str
    */
   bool parse(const UnicodeString* str, SMatches* mtch);
@@ -335,7 +286,6 @@ class CRegExp
    */
   bool parse(const UnicodeString* str, int pos, int eol, SMatches* mtch, int soscheme = 0,
              int moves = -1);
-#endif
   bool canStartWith(wchar ch) const;
 
  private:
@@ -363,12 +313,8 @@ class CRegExp
   SMatches* matches = nullptr;
   int cMatch = 0;
 
-#if !defined NAMED_MATCHES_IN_HASH
   UnicodeString* brnames[NAMED_MATCHES_NUM] = {};
   int cnMatch = 0;
-#else
-  SMatchHash* namedMatches = nullptr;
-#endif
 
   void init();
   EError setRELow(const UnicodeString& re);
