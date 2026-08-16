@@ -1,7 +1,4 @@
 #include "colorer/cregexp/cregexp.h"
-#include <array>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
 
 StackElem* CRegExp::RegExpStack {nullptr};
@@ -610,18 +607,15 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int& retPos
     }
     // ( ... )
     if (expr[i] == '(') {
-      // bool namedBracket = false;
       // perl-like "uncaptured" brackets
       if (expr.length() >= i + 2 && expr[i + 1] == '?' && expr[i + 2] == ':') {
         next->op = EOps::ReNamedBrackets;
         next->param0 = -1;
-        // namedBracket = true;
         i += 3;
       }
       else if (expr.length() > i + 2 && expr[i + 1] == '?' && expr[i + 2] == '{') {
         // named bracket
         next->op = EOps::ReNamedBrackets;
-        // namedBracket = true;
         auto s_curly = UnicodeTools::getCurlyContent(expr, i + 2);
         if (s_curly == nullptr)
           return EError::EBRACKETS;
@@ -1484,7 +1478,6 @@ inline bool CRegExp::parseRE(int pos)
   matches->cMatch = cMatch;
   matches->cnMatch = cnMatch;
   do {
-    // stack=null;
     if (lowParse(tree_root, nullptr, toParse)) {
       matches->topseSanitize(cMatch - 1);
       matches->topnseSanitize(cnMatch - 1);

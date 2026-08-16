@@ -204,7 +204,7 @@ enum ReAction {
      - \\yN \\YN \\y{name} \\Y{name} - back reference into another RE's bracket.
 
 \par 1.3. Perl compatibility.
-   - Modifiers //ismx
+   - Modifiers //isx
    - \\ p{name} - back reference to named bracket (but not named property as in Perl!)
    - No POSIX character classes support.
 
@@ -216,7 +216,7 @@ enum ReAction {
    - No surrogate symbols support,
    - No string length changes on case mappings (only 1 <-> 1 mappings),
 \par 2.2. Algorithmic problems:
-   - Stack recursion implementation.
+   - Explicit parse stack (unbounded growth, shared between CRegExp instances).
 
     @ingroup cregexp
 */
