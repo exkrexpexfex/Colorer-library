@@ -141,23 +141,8 @@ class SRegInfo
   EOps op = EOps::ReEmpty;
 };
 
-struct StackElem
-{
-  // local variable
-  SRegInfo* re;
-  SRegInfo* prev;
-  int toParse;
-  bool leftenter;
-  // step if function return true
-  int ifTrueReturn;
-  // step if function return false
-  int ifFalseReturn;
-};
-
-#define INIT_MEM_SIZE 512
-#define MEM_INC 128
-
 enum ReAction {
+  rea_None = -1,
   rea_False = 0,
   rea_True = 1,
   rea_Break,
@@ -168,6 +153,20 @@ enum ReAction {
   rea_NGRangeNM_step2,
   rea_NGRangeNM_step3
 };
+
+struct StackElem
+{
+  // local variable
+  SRegInfo* re;
+  SRegInfo* prev;
+  int toParse;
+  bool leftenter;
+  ReAction ifTrueReturn;
+  ReAction ifFalseReturn;
+};
+
+#define INIT_MEM_SIZE 512
+#define MEM_INC 128
 /** Regular Expression compiler and matcher.
     Colorer regular expressions library cregexp.
 
@@ -339,9 +338,9 @@ class CRegExp
 
   int count_elem;
   void check_stack(bool res, SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter,
-                   int* action);
-  void insert_stack(SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter, int ifTrueReturn,
-                    int ifFalseReturn, SRegInfo** re2, SRegInfo** prev2, int toParse2);
+                   ReAction* action);
+  void insert_stack(SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter, ReAction ifTrueReturn,
+                    ReAction ifFalseReturn, SRegInfo** re2, SRegInfo** prev2, int toParse2);
 
   static StackElem* RegExpStack;
   static int RegExpStack_Size;

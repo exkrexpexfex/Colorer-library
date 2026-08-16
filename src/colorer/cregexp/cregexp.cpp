@@ -896,10 +896,10 @@ bool CRegExp::checkMetaSymbol(EMetaSymbols symb, int& toParse)
   }
 }
 
-void CRegExp::check_stack(bool res, SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter, int* action)
+void CRegExp::check_stack(bool res, SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter, ReAction* action)
 {
   if (count_elem == 0) {
-    *action = res;
+    *action = res ? rea_True : rea_False;
     return;
   }
 
@@ -916,8 +916,8 @@ void CRegExp::check_stack(bool res, SRegInfo** re, SRegInfo** prev, int* toParse
   *leftenter = ne.leftenter;
 }
 
-void CRegExp::insert_stack(SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter, int ifTrueReturn,
-                           int ifFalseReturn, SRegInfo** re2, SRegInfo** prev2, int toParse2)
+void CRegExp::insert_stack(SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter, ReAction ifTrueReturn,
+                           ReAction ifFalseReturn, SRegInfo** re2, SRegInfo** prev2, int toParse2)
 {
   if (RegExpStack_Size == 0) {
     CRegExp::RegExpStack = new StackElem[INIT_MEM_SIZE];
@@ -958,15 +958,15 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
   bool leftenter = true;
   bool br = false;
   const UnicodeString& pattern = *global_pattern;
-  int action = -1;
+  ReAction action = rea_None;
 
   if (!re) {
     re = prev->parent;
     leftenter = false;
   }
   while (true) {
-    while (re || action != -1) {
-      if (re && action == -1)
+    while (re || action != rea_None) {
+      if (re && action == rea_None)
         switch (re->op) {
           case EOps::ReEmpty:
             break;
@@ -1320,6 +1320,8 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
         }
 
       switch (action) {
+        case rea_None:
+          break;
         case rea_False:
           if (count_elem) {
             check_stack(false, &re, &prev, &toParse, &leftenter, &action);
@@ -1337,26 +1339,26 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
             return true;
           break;
         case rea_Break:
-          action = -1;
+          action = rea_None;
           break;
         case rea_RangeN_step2:
-          action = -1;
+          action = rea_None;
           insert_stack(&re, &prev, &toParse, &leftenter, rea_True, rea_False, &re->next, &re, toParse);
           continue;
           break;
         case rea_RangeNM_step2:
-          action = -1;
+          action = rea_None;
           insert_stack(&re, &prev, &toParse, &leftenter, rea_True, rea_RangeNM_step3, &re->next, &re, toParse);
           continue;
           break;
         case rea_RangeNM_step3:
-          action = -1;  //-V1037
+          action = rea_None;
           re->param1++;
           check_stack(false, &re, &prev, &toParse, &leftenter, &action);
           continue;
           break;
         case rea_NGRangeN_step2:
-          action = -1;
+          action = rea_None;
           if (re->param0)
             re->param0--;
           re = re->un.param;
@@ -1364,13 +1366,13 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
           continue;
           break;
         case rea_NGRangeNM_step2:
-          action = -1;
+          action = rea_None;
           insert_stack(&re, &prev, &toParse, &leftenter, rea_True, rea_NGRangeNM_step3, &re->un.param, nullptr,
                        toParse);
           continue;
           break;
         case rea_NGRangeNM_step3:
-          action = -1;
+          action = rea_None;
           re->param1++;
           check_stack(false, &re, &prev, &toParse, &leftenter, &action);
           continue;
