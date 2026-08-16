@@ -1490,6 +1490,25 @@ inline bool CRegExp::parseRE(int pos)
   matches->cMatch = cMatch;
   matches->cnMatch = cnMatch;
   do {
+    if (positionMoves) {
+      bool skip = false;
+      if (firstCharMaskUseful) {
+        if (toParse >= end) {
+          skip = true;
+        }
+        else {
+          const auto ch = static_cast<uint32_t>((*global_pattern)[toParse]);
+          if (ch < 128 && !(firstCharMask[ch >> 6] & (uint64_t(1) << (ch & 63))))
+            skip = true;
+        }
+      }
+      if (!skip && firstNode && !quickCheck(toParse))
+        skip = true;
+      if (skip) {
+        toParse = ++pos;
+        continue;
+      }
+    }
     if (lowParse(tree_root, nullptr, toParse)) {
       matches->topseSanitize(cMatch - 1);
       matches->topnseSanitize(cnMatch - 1);
