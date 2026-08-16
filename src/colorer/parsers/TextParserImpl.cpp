@@ -266,6 +266,7 @@ int TextParser::Impl::searchKW(const SchemeNodeKeywords* node, int /*no*/, int l
     }
   }
 
+  return MATCH_NOTHING;
 }
 
 int TextParser::Impl::searchIN(SchemeNodeInherit* node, int no, int lowLen, int hiLen)
