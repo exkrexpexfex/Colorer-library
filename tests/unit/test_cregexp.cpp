@@ -247,6 +247,11 @@ TEST_CASE("CRegExp flags", "[cregexp]")
     require_match(u"/abc/i", u"ABC", 0, 3);
     require_match(u"/abc/i", u"AbC", 0, 3);
     require_no_match(u"/abc/", u"ABC");
+    require_match(u"/[x]/i", u"X", 0, 1);
+    require_match(u"/[x]/i", u"x", 0, 1);
+    require_match(u"/[aX]/i", u"x", 0, 1);
+    require_match(u"/[aX]/i", u"A", 0, 1);
+    require_no_match(u"/[x]/", u"X");
   }
 
   SECTION("dot does not match newline unless /s")

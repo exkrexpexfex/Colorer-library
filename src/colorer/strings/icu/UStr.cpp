@@ -211,9 +211,9 @@ std::unique_ptr<CharacterClass> UStr::createCharClass(const UnicodeString& ccs, 
     }
     cc->add(ccs[pos]);
     if (ignore_case) {
-      cc->add(u_tolower(prev_char));
-      cc->add(u_toupper(prev_char));
-      cc->add(u_totitle(prev_char));
+      cc->add(u_tolower(ccs[pos]));
+      cc->add(u_toupper(ccs[pos]));
+      cc->add(u_totitle(ccs[pos]));
     }
     prev_char = ccs[pos];
   }
