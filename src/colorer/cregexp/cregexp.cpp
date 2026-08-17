@@ -77,6 +77,8 @@ void CRegExp::init()
 #endif
   cnMatch = 0;
   count_elem = 0;
+  parseSteps = 0;
+  stepBudgetExceeded = false;
 }
 CRegExp::CRegExp()
 {
@@ -995,6 +997,10 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
   }
   while (true) {
     while (re || action != rea_None) {
+      if (++parseSteps > parseStepLimit) {
+        stepBudgetExceeded = true;
+        return false;
+      }
       if (re && action == rea_None)
         switch (re->op) {
           case EOps::ReEmpty:
@@ -1472,6 +1478,8 @@ inline bool CRegExp::parseRE(int pos)
     return false;
 
   count_elem = 0;
+  parseSteps = 0;
+  stepBudgetExceeded = false;
   int toParse = pos;
 
   if (!positionMoves && firstCharMaskUseful) {
@@ -1510,6 +1518,8 @@ inline bool CRegExp::parseRE(int pos)
       matches->topnseSanitize(cnMatch - 1);
       return true;
     }
+    if (stepBudgetExceeded)
+      return false;
     if (!positionMoves)
       return false;
     toParse = ++pos;
@@ -1567,6 +1577,21 @@ bool CRegExp::setPositionMoves(bool moves)
 {
   positionMoves = moves;
   return true;
+}
+
+void CRegExp::setParseStepLimit(int limit)
+{
+  parseStepLimit = limit < 1 ? 1 : limit;
+}
+
+int CRegExp::getParseStepLimit() const
+{
+  return parseStepLimit;
+}
+
+bool CRegExp::exceededParseStepLimit() const
+{
+  return stepBudgetExceeded;
 }
 
 void CRegExp::clearRegExpStack()

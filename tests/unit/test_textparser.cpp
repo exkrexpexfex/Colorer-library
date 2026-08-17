@@ -324,3 +324,38 @@ TEST_CASE("tryParseLine accepts content edits and rejects block-boundary edits",
     REQUIRE_FALSE(parser.tryParseLine(2));
   }
 }
+
+TEST_CASE("Long lines keep coloring past the maxBlockSize window", "[textparser]")
+{
+  auto hrc_path = fs::path(__FILE__).parent_path() / "data" / "type_longline.hrc";
+  XmlInputSource input(UnicodeString(hrc_path.c_str()));
+  HrcLibrary lib;
+  lib.loadSource(&input);
+
+  UnicodeString prefix;
+  for (int i = 0; i < 1100; i++) {
+    prefix.append(' ');
+  }
+
+  SECTION("keyword after the first 1000 characters is still matched")
+  {
+    UnicodeString line = prefix;
+    line.append(UnicodeString(u"If"));
+    const auto hits = parseLine(lib, UnicodeString("long_line"), line);
+    REQUIRE(hits.size() == 1);
+    REQUIRE(hits[0].start == 1100);
+    REQUIRE(hits[0].end == 1102);
+    REQUIRE(hits[0].name.compare(UnicodeString("long_line:Keyword")) == 0);
+  }
+
+  SECTION("regexp after the first 1000 characters is still matched")
+  {
+    UnicodeString line = prefix;
+    line.append(UnicodeString(u"Zzz"));
+    const auto hits = parseLine(lib, UnicodeString("long_line"), line);
+    REQUIRE(hits.size() == 1);
+    REQUIRE(hits[0].start == 1100);
+    REQUIRE(hits[0].end == 1103);
+    REQUIRE(hits[0].name.compare(UnicodeString("long_line:Keyword")) == 0);
+  }
+}

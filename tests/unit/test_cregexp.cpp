@@ -680,3 +680,44 @@ TEST_CASE("CRegExp \\Y{name} copies named group case-insensitively", "[cregexp]"
   REQUIRE(end_match.s[0] == 0);
   REQUIRE(end_match.e[0] == 3);
 }
+
+TEST_CASE("CRegExp parse-step budget stops catastrophic backtracking", "[cregexp]")
+{
+  SECTION("nested plus against a non-matching tail fails the budget")
+  {
+    const auto pre = ustr(u"/(a+)+b/");
+    CRegExp re(&pre);
+    REQUIRE(re.isOk());
+    re.setParseStepLimit(10000);
+    UnicodeString text;
+    for (int i = 0; i < 24; i++) {
+      text.append('a');
+    }
+    text.append('c');
+    SMatches match;
+    REQUIRE_FALSE(parse_re(re, text, match));
+    REQUIRE(re.exceededParseStepLimit());
+  }
+
+  SECTION("a normal match does not trip the budget")
+  {
+    const auto pre = ustr(u"/abc/");
+    CRegExp re(&pre);
+    REQUIRE(re.isOk());
+    SMatches match;
+    REQUIRE(parse_re(re, ustr(u"abc"), match));
+    REQUIRE_FALSE(re.exceededParseStepLimit());
+    REQUIRE(match.s[0] == 0);
+    REQUIRE(match.e[0] == 3);
+  }
+
+  SECTION("ordinary miss does not trip the budget")
+  {
+    const auto pre = ustr(u"/xyz/");
+    CRegExp re(&pre);
+    REQUIRE(re.isOk());
+    SMatches match;
+    REQUIRE_FALSE(parse_re(re, ustr(u"aaa"), match));
+    REQUIRE_FALSE(re.exceededParseStepLimit());
+  }
+}

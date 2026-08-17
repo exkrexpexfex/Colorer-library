@@ -293,6 +293,13 @@ class CRegExp
   bool parse(const UnicodeString* str, int pos, int eol, SMatches* mtch, int soscheme = 0,
              int moves = -1);
   bool canStartWith(wchar ch) const;
+  /**
+   * Caps backtracking steps in one parse() call. When exceeded, the match
+   * fails (it is not a wall-clock quantum). Default 1 000 000.
+   */
+  void setParseStepLimit(int limit);
+  int getParseStepLimit() const;
+  bool exceededParseStepLimit() const;
 
  private:
   bool ignoreCase = false;
@@ -345,6 +352,9 @@ class CRegExp
   bool parseRE(int toParse);
 
   int count_elem;
+  int parseSteps = 0;
+  int parseStepLimit = 1000000;
+  bool stepBudgetExceeded = false;
   void check_stack(bool res, SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter,
                    ReAction* action);
   void insert_stack(SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter, ReAction ifTrueReturn,

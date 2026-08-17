@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hrc>
+  <prototype name="long_line" group="test" description="tokens after maxBlockSize window">
+    <filename>/\.longline$/</filename>
+  </prototype>
+  <type name="long_line">
+    <region name="Keyword"/>
+    <scheme name="long_line">
+      <keywords region="Keyword" ignorecase="no">
+        <word name="If"/>
+      </keywords>
+      <regexp match="/Zzz/" region="Keyword"/>
+    </scheme>
+  </type>
+</hrc>

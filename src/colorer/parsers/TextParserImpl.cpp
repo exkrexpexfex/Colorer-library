@@ -627,8 +627,8 @@ bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority, b
       continue;
     }
 
-    schemeStart = -1;
     if (res) {
+      schemeStart = -1;
       if (tracingTry && tryPopOnEnd) {
         if (tryStack.empty()) {
           tryMismatch = true;
@@ -640,6 +640,11 @@ bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority, b
       stackLevel--;
       return true;
     }
+    if (gx < len) {
+      // Parent end not found: keep the maxBlockSize window, but stay on this line.
+      continue;
+    }
+    schemeStart = -1;
     len = -1;
     current_parse_line++;
     gx = 0;

@@ -99,6 +99,12 @@ class TextParser
    * Clears internal cached text tree stucture
    */
   void clearCache();
+  /**
+   * Window length for one regex/content pass on a line (default 1000).
+   * Does not skip the rest of the line: the parser continues with the next
+   * window until the line ends. Bounds each match attempt so a minified
+   * 10k+ line cannot run a single RE against the whole remainder.
+   */
   void setMaxBlockSize(int max_block_size);
 
   ~TextParser() = default;
