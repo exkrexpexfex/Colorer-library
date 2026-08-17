@@ -30,6 +30,7 @@ class TextParser::Impl
  private:
   UnicodeString* str = nullptr;
   UnicodeString str_lowercase;
+  bool str_lowercase_ready = false;
   int stackLevel = 0;
   int current_parse_line = 0;
   int gx = 0;
@@ -64,6 +65,7 @@ class TextParser::Impl
   void enterScheme(int lno, const SMatches* match, const SchemeNodeBlock* schemeNode);
   void leaveScheme(int, const SMatches* match, const SchemeNodeBlock* schemeNode);
 
+  void ensureLineLowercase();
   int searchKW(const SchemeNodeKeywords* node, int, int lowlen, int);
   int searchIN(SchemeNodeInherit* node, int no, int lowLen, int hiLen);
   int searchRE(SchemeNodeRegexp* node, int no, int lowLen, int hiLen);

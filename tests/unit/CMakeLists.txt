@@ -11,6 +11,7 @@ set(unit_tests_SRC
     test_xmlreader.cpp
     test_regionmapper.cpp
     test_ustr.cpp
+    test_textparser.cpp
     test_common.h
     TestLogger.h
     ${CMAKE_SOURCE_DIR}/external/catch2/catch_amalgamated.cpp

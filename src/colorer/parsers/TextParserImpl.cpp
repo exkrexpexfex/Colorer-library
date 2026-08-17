@@ -36,6 +36,7 @@ int TextParser::Impl::parse(int from, int num, TextParseMode mode)
   current_parse_line = from;
   end_line4parse = from + num;
   clearLine = -1;
+  str_lowercase_ready = false;
 
   invisibleSchemesFilled = false;
   schemeStart = -1;
@@ -194,6 +195,16 @@ void TextParser::Impl::fillInvisibleSchemes(ParseCache* ch)
   enterScheme(current_parse_line, 0, 0, ch->clender->region);
 }
 
+void TextParser::Impl::ensureLineLowercase()
+{
+  if (str_lowercase_ready) {
+    return;
+  }
+  str_lowercase = *str;
+  str_lowercase.toLower();
+  str_lowercase_ready = true;
+}
+
 int TextParser::Impl::searchKW(const SchemeNodeKeywords* node, int /*no*/, int lowlen,
                                int /*hilen*/)
 {
@@ -201,7 +212,11 @@ int TextParser::Impl::searchKW(const SchemeNodeKeywords* node, int /*no*/, int l
     return MATCH_NOTHING;
   }
 
-  UnicodeString *use_str = node->kwList->matchCase ? str : &str_lowercase;
+  UnicodeString* use_str = str;
+  if (!node->kwList->matchCase) {
+    ensureLineLowercase();
+    use_str = &str_lowercase;
+  }
   bool leftbound_bad = false;
   if (node->kwList->hasNonSymbols) {
     if (gx > 0) {
@@ -541,8 +556,7 @@ bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority)
         stackLevel--;
         return true;
       }
-      str_lowercase = *str;
-      str_lowercase.toLower();
+      str_lowercase_ready = false;
       regionHandler->clearLine(current_parse_line, str);
     }
     // hack to include invisible regions in start of block
