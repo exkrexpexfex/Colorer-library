@@ -49,7 +49,7 @@ int TextParser::Impl::parse(int from, int num, TextParseMode mode)
     return from;
   }
 
-  vtlist = new VTList();
+  vtlist.clear();
 
   lineSource->startJob(from);
   regionHandler->startParsing(from);
@@ -89,10 +89,10 @@ int TextParser::Impl::parse(int from, int num, TextParseMode mode)
     stackLevel = 0;
     COLORER_LOG_DEEPTRACE("[TextParserImpl] parse: goes into colorize()");
     if (parent != cache) {
-      vtlist->restore(parent->vcache);
+      vtlist.restore(parent->vcache);
       parent->clender->end->setBackTrace(parent->backLine, &parent->matchstart);
       colorize(parent->clender->end.get(), parent->clender->lowContentPriority);
-      vtlist->clear();
+      vtlist.clear();
     }
     else {
       colorize(nullptr, false);
@@ -113,7 +113,7 @@ int TextParser::Impl::parse(int from, int num, TextParseMode mode)
   } while (parent);
   regionHandler->endParsing(endLine);
   lineSource->endJob(endLine);
-  delete vtlist;
+  vtlist.clear();
   return endLine;
 }
 
@@ -294,23 +294,23 @@ int TextParser::Impl::searchIN(SchemeNodeInherit* node, int no, int lowLen, int 
 
   int re_result = MATCH_NOTHING;
   // ищем для текущей схемы возможную замену через virtual предыдущих inherit
-  SchemeImpl* ssubst = node->scheme->virtualTarget ? vtlist->pushvirt(node->scheme) : nullptr;
+  SchemeImpl* ssubst = node->scheme->virtualTarget ? vtlist.pushvirt(node->scheme) : nullptr;
   if (!ssubst) {
     // не нашли замену
     // помещаем текущий inherit в список для будущих замен. True - если поместили, не было
     // ограничений
-    bool b = vtlist->push(node);
+    bool b = vtlist.push(node);
     // парсим текст по имплементации текущего inherit
     re_result = searchMatch(node->scheme, no, lowLen, hiLen);
     if (b) {
       // достаем inherit из списка, больше он не нужен
-      vtlist->pop();
+      vtlist.pop();
     }
   }
   else {
     // нашли замену, по ней далее парсим текст
     re_result = searchMatch(ssubst, no, lowLen, hiLen);
-    vtlist->popvirt();
+    vtlist.popvirt();
   }
   return re_result;
 }
@@ -357,7 +357,7 @@ int TextParser::Impl::searchBL(SchemeNodeBlock* node, int no, int lowLen, int hi
   COLORER_LOG_DEEPTRACE("[TextParserImpl] Scheme matched. gx=%", gx);
   gx = match.e[0];
   // проверяем наличие замены через virtual для данной схемы
-  SchemeImpl* ssubst = node->scheme->virtualTarget ? vtlist->pushvirt(node->scheme) : nullptr;
+  SchemeImpl* ssubst = node->scheme->virtualTarget ? vtlist.pushvirt(node->scheme) : nullptr;
   if (!ssubst) {
     // замены нет, работаем с текущей
     ssubst = node->scheme;
@@ -448,7 +448,7 @@ int TextParser::Impl::searchBL(SchemeNodeBlock* node, int no, int lowLen, int hi
     }
     else {
       OldCacheF->eline = current_parse_line;
-      OldCacheF->vcache = vtlist->store();
+      OldCacheF->vcache = vtlist.store();
       forward = OldCacheF;
       parent = OldCacheP;
     }
@@ -457,7 +457,7 @@ int TextParser::Impl::searchBL(SchemeNodeBlock* node, int no, int lowLen, int hi
     delete backLine;
   }
   if (ssubst != node->scheme) {
-    vtlist->popvirt();
+    vtlist.popvirt();
   }
 
   /* (empty-block.test) skips block if it has zero length and spread over single line */

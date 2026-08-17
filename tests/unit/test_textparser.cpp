@@ -233,3 +233,59 @@ TEST_CASE("Block end copies the start line only when it uses backtrace", "[textp
     REQUIRE(left_on_end);
   }
 }
+
+TEST_CASE("Inherit virtual substitution still maps schemes", "[textparser]")
+{
+  auto hrc_path = fs::path(__FILE__).parent_path() / "data" / "type_virtual.hrc";
+  XmlInputSource input(UnicodeString(hrc_path.c_str()));
+  HrcLibrary lib;
+  lib.loadSource(&input);
+
+  SECTION("empty virtual stack uses the inherited scheme as-is")
+  {
+    const auto hits = parseLine(lib, UnicodeString("virt_plain"), UnicodeString(u"foo bar"));
+    REQUIRE(hits.size() == 1);
+    REQUIRE(hits[0].start == 0);
+    REQUIRE(hits[0].end == 3);
+    REQUIRE(hits[0].name.compare(UnicodeString("virt_plain:BaseKw")) == 0);
+  }
+
+  SECTION("virtual replaces the target scheme")
+  {
+    const auto hits = parseLine(lib, UnicodeString("virt_subst"), UnicodeString(u"foo bar"));
+    REQUIRE(hits.size() == 1);
+    REQUIRE(hits[0].start == 4);
+    REQUIRE(hits[0].end == 7);
+    REQUIRE(hits[0].name.compare(UnicodeString("virt_subst:AltKw")) == 0);
+  }
+
+  SECTION("virtual replaces a block scheme")
+  {
+    const auto hits = parseLine(lib, UnicodeString("virt_block"), UnicodeString(u"[bar]"));
+    REQUIRE(hits.size() == 1);
+    REQUIRE(hits[0].start == 1);
+    REQUIRE(hits[0].end == 4);
+    REQUIRE(hits[0].name.compare(UnicodeString("virt_block:AltKw")) == 0);
+  }
+
+  SECTION("cached multiline block keeps the virtual substitution")
+  {
+    auto* file_type = lib.getFileType(UnicodeString("virt_block"));
+    REQUIRE(file_type != nullptr);
+    REQUIRE(file_type->getBaseScheme() != nullptr);
+
+    InvalidatingLineSource source({UnicodeString(u"["), UnicodeString(u"bar"), UnicodeString(u"]")});
+    CollectHandler handler;
+    TextParser parser;
+    parser.setFileType(file_type);
+    parser.setLineSource(&source);
+    parser.setRegionHandler(&handler);
+    parser.parse(0, 1, TextParser::TextParseMode::TPM_CACHE_UPDATE);
+    parser.parse(1, 2, TextParser::TextParseMode::TPM_CACHE_READ);
+
+    REQUIRE(handler.hits.size() == 1);
+    REQUIRE(handler.hits[0].start == 0);
+    REQUIRE(handler.hits[0].end == 3);
+    REQUIRE(handler.hits[0].name.compare(UnicodeString("virt_block:AltKw")) == 0);
+  }
+}

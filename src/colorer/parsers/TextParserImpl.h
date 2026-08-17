@@ -50,7 +50,7 @@ class TextParser::Impl
   ParseCache* forward = nullptr;
 
   SMatches matchend = {};
-  VTList* vtlist = nullptr;
+  VTList vtlist;
 
   LineSource* lineSource = nullptr;
   RegionHandler* regionHandler = nullptr;
