@@ -275,6 +275,10 @@ class CRegExp
     Returns current RE object, used for backreferences with \y \Y operators.
   */
   bool getBackTrace(const UnicodeString** str, SMatches** trace) const;
+  /**
+    True if this RE contains \y / \Y backtrace operators and needs the start-line copy.
+  */
+  bool hasBackTrace() const;
 #endif
   /**
     Compiles specified regular expression and drops all
@@ -305,6 +309,7 @@ class CRegExp
   CRegExp* backRE = nullptr;
   const UnicodeString* backStr = nullptr;
   SMatches* backTrace = nullptr;
+  bool usesBackTrace = false;
   int schemeStart = 0;
 #endif
   bool startChange = false;

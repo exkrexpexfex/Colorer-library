@@ -571,6 +571,28 @@ TEST_CASE("CRegExp Colorer backtrace \\y", "[cregexp]")
     REQUIRE(end_match.s[0] == 0);
     REQUIRE(end_match.e[0] == 0);
   }
+
+  SECTION("hasBackTrace is set only for \\y / \\Y operators")
+  {
+    const auto plain = ustr(u"/foo/");
+    CRegExp plain_re(&plain);
+    REQUIRE(plain_re.isOk());
+    REQUIRE_FALSE(plain_re.hasBackTrace());
+
+    const auto ynum = ustr(u"/\\y1/");
+    CRegExp ynum_re(&ynum);
+    REQUIRE(ynum_re.isOk());
+    REQUIRE(ynum_re.hasBackTrace());
+
+    const auto start_re = ustr(u"/(?{n}foo)/");
+    CRegExp start(&start_re);
+    REQUIRE(start.isOk());
+    const auto yname = ustr(u"/\\Y{n}/");
+    CRegExp yname_re;
+    REQUIRE(yname_re.setBackRE(&start));
+    REQUIRE(yname_re.setRE(&yname));
+    REQUIRE(yname_re.hasBackTrace());
+  }
 }
 
 TEST_CASE("CRegExp canStartWith", "[cregexp]")

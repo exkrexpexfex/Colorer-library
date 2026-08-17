@@ -368,7 +368,11 @@ int TextParser::Impl::searchBL(SchemeNodeBlock* node, int no, int lowLen, int hi
   ParseCache* ResF = nullptr;
   ParseCache* ResP = nullptr;
 
-  auto* backLine = new UnicodeString(*str);
+  auto scheme_end = node->end.get();
+  UnicodeString* backLine = nullptr;
+  if (scheme_end->hasBackTrace()) {
+    backLine = new UnicodeString(*str);
+  }
   if (updateCache) {
     ResF = forward;
     ResP = parent;
@@ -407,7 +411,6 @@ int TextParser::Impl::searchBL(SchemeNodeBlock* node, int no, int lowLen, int hi
   // ... переменных регулярного выражения end блока
   SMatches* old_reg_match;
   UnicodeString* old_reg_str;
-  auto scheme_end = node->end.get();
   scheme_end->getBackTrace((const UnicodeString**) &old_reg_str, &old_reg_match);
 
   // задаем новые значения

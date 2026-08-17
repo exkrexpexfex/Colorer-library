@@ -73,6 +73,7 @@ void CRegExp::init()
   backRE = nullptr;
   backStr = nullptr;
   backTrace = nullptr;
+  usesBackTrace = false;
 #endif
   cnMatch = 0;
   count_elem = 0;
@@ -116,6 +117,9 @@ EError CRegExp::setRELow(const UnicodeString& expr)
   cMatch = 0;
   cnMatch = 0;
   endChange = startChange = false;
+#ifdef COLORERMODE
+  usesBackTrace = false;
+#endif
   int start = 0;
   while (start < len && Character::isWhitespace(expr[start])) start++;
   if (start >= len || expr[start] != '/')
@@ -427,6 +431,7 @@ EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int from, i
           break;
         case 'y':
         case 'Y':
+          usesBackTrace = true;
           next->op = (expr[i + 1] == 'y' ? EOps::ReBkTrace : EOps::ReBkTraceN);
           if (i + 2 >= to)
             return EError::ESYNTAX;
@@ -1600,6 +1605,11 @@ bool CRegExp::getBackTrace(const UnicodeString** str, SMatches** trace) const
   *str = backStr;
   *trace = backTrace;
   return true;
+}
+
+bool CRegExp::hasBackTrace() const
+{
+  return usesBackTrace;
 }
 
 #endif
