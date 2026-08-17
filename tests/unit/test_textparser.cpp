@@ -289,3 +289,38 @@ TEST_CASE("Inherit virtual substitution still maps schemes", "[textparser]")
     REQUIRE(handler.hits[0].name.compare(UnicodeString("virt_block:AltKw")) == 0);
   }
 }
+
+TEST_CASE("tryParseLine accepts content edits and rejects block-boundary edits", "[textparser]")
+{
+  auto hrc_path = fs::path(__FILE__).parent_path() / "data" / "type_tryline.hrc";
+  XmlInputSource input(UnicodeString(hrc_path.c_str()));
+  HrcLibrary lib;
+  lib.loadSource(&input);
+  auto* file_type = lib.getFileType(UnicodeString("try_line"));
+  REQUIRE(file_type != nullptr);
+  REQUIRE(file_type->getBaseScheme() != nullptr);
+
+  InvalidatingLineSource source(
+      {UnicodeString(u"int a"), UnicodeString(u"/*"), UnicodeString(u" cmt"), UnicodeString(u"*/"),
+       UnicodeString(u"int b")});
+  CollectHandler handler;
+  TextParser parser;
+  parser.setFileType(file_type);
+  parser.setLineSource(&source);
+  parser.setRegionHandler(&handler);
+  parser.parse(0, 5, TextParser::TextParseMode::TPM_CACHE_UPDATE);
+
+  SECTION("content inside a comment keeps the scheme stack")
+  {
+    REQUIRE(parser.tryParseLine(2));
+  }
+
+  SECTION("closing the comment on a middle line changes the stack")
+  {
+    InvalidatingLineSource closed(
+        {UnicodeString(u"int a"), UnicodeString(u"/*"), UnicodeString(u" cmt */"),
+         UnicodeString(u"*/"), UnicodeString(u"int b")});
+    parser.setLineSource(&closed);
+    REQUIRE_FALSE(parser.tryParseLine(2));
+  }
+}

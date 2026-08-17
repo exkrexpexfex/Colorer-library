@@ -5,7 +5,7 @@
 
 std::unique_ptr<TestLogger> logger;
 
-enum JobType { JT_NOTHING, JT_TEST1, JT_TEST2, JT_TEST3, JT_TEST4, JT_TEST5 };
+enum JobType { JT_NOTHING, JT_TEST1, JT_TEST2, JT_TEST3, JT_TEST4, JT_TEST5, JT_TEST6 };
 
 int loops = 1;
 JobType job = JT_NOTHING;
@@ -27,7 +27,8 @@ void printError()
            L"   2         TestParserFactoryHrcLibrary\n"
            L"   3         TestParserFactoryStyledMapper\n"
            L"   4         TestParserFactoryLoadAllHRCScheme\n"
-           L"   5         TestColoringFile\n");
+           L"   5         TestColoringFile\n"
+           L"   6         TestEditorLineEdit (try-parse vs invalidate tail)\n");
 }
 
 int init(int argc, char* argv[])
@@ -106,6 +107,9 @@ int main(int argc, char* argv[])
         break;
       case JT_TEST5:
         TestColoringFile(loops, catalogPath, testFile);
+        break;
+      case JT_TEST6:
+        TestEditorLineEdit(loops, catalogPath, testFile);
         break;
     }
   } catch (Exception& e) {

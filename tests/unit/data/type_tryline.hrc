@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hrc>
+  <prototype name="try_line" group="test" description="try-parse line structure">
+    <filename>/\.tryline$/</filename>
+  </prototype>
+  <type name="try_line">
+    <region name="Kw"/>
+    <region name="Cmt"/>
+    <region name="Str"/>
+    <scheme name="comment">
+      <regexp match="/[^*]+/" region="Cmt"/>
+    </scheme>
+    <scheme name="string">
+      <regexp match="/[^&quot;]+/" region="Str"/>
+    </scheme>
+    <scheme name="here">
+      <regexp match="/foo/" region="Kw"/>
+    </scheme>
+    <scheme name="try_line">
+      <keywords region="Kw" ignorecase="no">
+        <word name="int"/>
+      </keywords>
+      <block start="/\/\*/" end="/\*\//" scheme="comment"/>
+      <block start="/&quot;/" end="/&quot;/" scheme="string"/>
+      <block start="/&lt;&lt;(?{t}\w+)/" end="/\y{t}/" scheme="here"/>
+    </scheme>
+  </type>
+</hrc>

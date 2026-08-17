@@ -23,11 +23,19 @@ class TextParser::Impl
   void setLineSource(LineSource* lh);
   void setRegionHandler(RegionHandler* rh);
   int parse(int from, int num, TextParseMode mode);
+  bool tryParseLine(int line);
   void breakParse();
   void initCache();
   void setMaxBlockSize(int max_block_size);
 
  private:
+  struct TryLevel
+  {
+    SchemeImpl* scheme = nullptr;
+    const SchemeNodeBlock* clender = nullptr;
+    SMatches matchstart = {};
+    UnicodeString startText;
+  };
   UnicodeString* str = nullptr;
   UnicodeString str_lowercase;
   bool str_lowercase_ready = false;
@@ -44,6 +52,9 @@ class TextParser::Impl
   bool breakParsing = false;
   bool invisibleSchemesFilled = false;
   bool updateCache = false;
+  bool tracingTry = false;
+  bool tryMismatch = false;
+  std::vector<TryLevel> tryStack;
 
   ParseCache* cache = nullptr;
   ParseCache* parent = nullptr;
@@ -71,7 +82,10 @@ class TextParser::Impl
   int searchRE(SchemeNodeRegexp* node, int no, int lowLen, int hiLen);
   int searchBL(SchemeNodeBlock* node, int no, int lowLen, int hiLen);
   int searchMatch(const SchemeImpl* cscheme, int no, int lowLen, int hiLen);
-  bool colorize(CRegExp* root_end_re, bool lowContentPriority);
+  bool colorize(CRegExp* root_end_re, bool lowContentPriority, bool tryPopOnEnd = false);
+  void collectOpenLevels(ParseCache* node, std::vector<TryLevel>& out) const;
+  static bool sameTryLevel(const TryLevel& a, const TryLevel& b);
+  static UnicodeString matchSpan(const UnicodeString* line, const SMatches& match);
 };
 
 #endif // COLORER_TEXTPARSERIMPL_H

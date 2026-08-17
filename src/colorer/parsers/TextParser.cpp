@@ -18,6 +18,11 @@ int TextParser::parse(int from, int num, TextParseMode mode)
   return pimpl->parse(from, num, mode);
 }
 
+bool TextParser::tryParseLine(int line)
+{
+  return pimpl->tryParseLine(line);
+}
+
 void TextParser::setFileType(FileType* type)
 {
   pimpl->setFileType(type);

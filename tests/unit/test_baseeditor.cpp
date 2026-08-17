@@ -1,0 +1,171 @@
+#include <catch2/catch_amalgamated.hpp>
+#include <vector>
+#include "colorer/HrcLibrary.h"
+#include "colorer/LineSource.h"
+#include "colorer/ParserFactory.h"
+#include "colorer/RegionHandler.h"
+#include "colorer/editor/BaseEditor.h"
+#include "colorer/utils/FileSystems.h"
+#include "colorer/xml/XmlInputSource.h"
+
+namespace {
+
+class MutableLines : public LineSource
+{
+ public:
+  explicit MutableLines(std::vector<UnicodeString> lines) : lines_(std::move(lines)) {}
+
+  UnicodeString* getLine(size_t lno) override
+  {
+    return lno < lines_.size() ? &lines_[lno] : nullptr;
+  }
+
+  void setLine(size_t lno, UnicodeString text)
+  {
+    REQUIRE(lno < lines_.size());
+    lines_[lno] = std::move(text);
+  }
+
+  int size() const
+  {
+    return static_cast<int>(lines_.size());
+  }
+
+ private:
+  std::vector<UnicodeString> lines_;
+};
+
+class CountHandler : public RegionHandler
+{
+ public:
+  int clear_lines = 0;
+
+  void addRegion(size_t /*lno*/, UnicodeString* /*line*/, int /*sx*/, int /*ex*/,
+                 const Region* /*region*/) override
+  {
+  }
+
+  void enterScheme(size_t /*lno*/, UnicodeString* /*line*/, int /*sx*/, int /*ex*/,
+                   const Region* /*region*/, const Scheme* /*scheme*/) override
+  {
+  }
+
+  void leaveScheme(size_t /*lno*/, UnicodeString* /*line*/, int /*sx*/, int /*ex*/,
+                   const Region* /*region*/, const Scheme* /*scheme*/) override
+  {
+  }
+
+  void clearLine(size_t /*lno*/, UnicodeString* /*line*/) override
+  {
+    clear_lines++;
+  }
+};
+
+HrcLibrary& loadTryLine(ParserFactory& factory)
+{
+  auto hrc_path = fs::path(__FILE__).parent_path() / "data" / "type_tryline.hrc";
+  UnicodeString location(hrc_path.c_str());
+  factory.loadHrcPath(&location);
+  return factory.getHrcLibrary();
+}
+
+std::unique_ptr<BaseEditor> makeEditor(ParserFactory& factory, MutableLines& source)
+{
+  auto editor = std::make_unique<BaseEditor>(&factory, &source);
+  auto* type = factory.getHrcLibrary().getFileType(UnicodeString("try_line"));
+  REQUIRE(type != nullptr);
+  editor->setFileType(type);
+  editor->lineCountEvent(source.size());
+  editor->visibleTextEvent(0, source.size());
+  editor->validate(-1, true);
+  return editor;
+}
+
+}  // namespace
+
+TEST_CASE("modifyLineEvent keeps the tail valid when the scheme stack is unchanged", "[baseeditor]")
+{
+  ParserFactory factory;
+  loadTryLine(factory);
+
+  MutableLines source({UnicodeString(u"int a"), UnicodeString(u"/*"), UnicodeString(u" cmt"),
+                       UnicodeString(u"*/"), UnicodeString(u"int b")});
+  auto editor = makeEditor(factory, source);
+  const int parsed = source.size();
+  REQUIRE(editor->getInvalidLine() == parsed);
+
+  CountHandler counter;
+  editor->addRegionHandler(&counter);
+
+  SECTION("edit inside a comment does not invalidate following lines")
+  {
+    source.setLine(2, UnicodeString(u" cmt2"));
+    counter.clear_lines = 0;
+    editor->modifyLineEvent(2);
+    REQUIRE(counter.clear_lines == 1);
+    REQUIRE(editor->getInvalidLine() == parsed);
+
+    counter.clear_lines = 0;
+    const LineRegion* regions = editor->getLineRegions(4);
+    REQUIRE(counter.clear_lines == 0);
+    REQUIRE(editor->getInvalidLine() == parsed);
+    bool saw_int = false;
+    for (const LineRegion* lr = regions; lr != nullptr; lr = lr->next) {
+      if (lr->region != nullptr && lr->region->getName().compare(UnicodeString("try_line:Kw")) == 0) {
+        saw_int = true;
+      }
+    }
+    REQUIRE(saw_int);
+  }
+
+  SECTION("closing a comment early invalidates the tail")
+  {
+    source.setLine(2, UnicodeString(u" cmt */"));
+    counter.clear_lines = 0;
+    editor->modifyLineEvent(2);
+    REQUIRE(counter.clear_lines == 1);
+    REQUIRE(editor->getInvalidLine() == 2);
+
+    editor->validate(-1, true);
+    REQUIRE(editor->getInvalidLine() == parsed);
+    const LineRegion* regions = editor->getLineRegions(4);
+    bool saw_int = false;
+    for (const LineRegion* lr = regions; lr != nullptr; lr = lr->next) {
+      if (lr->region != nullptr && lr->region->getName().compare(UnicodeString("try_line:Kw")) == 0) {
+        saw_int = true;
+      }
+    }
+    REQUIRE(saw_int);
+  }
+
+  SECTION("opening a new block invalidates the tail")
+  {
+    source.setLine(0, UnicodeString(u"int a /*"));
+    editor->modifyLineEvent(0);
+    REQUIRE(editor->getInvalidLine() == 0);
+  }
+
+  SECTION("changing a heredoc tag is a structural change")
+  {
+    MutableLines here({UnicodeString(u"<<END"), UnicodeString(u"foo"), UnicodeString(u"END"),
+                       UnicodeString(u"int x")});
+    auto here_editor = makeEditor(factory, here);
+    REQUIRE(here_editor->getInvalidLine() == here.size());
+    here.setLine(0, UnicodeString(u"<<FOO"));
+    here_editor->modifyLineEvent(0);
+    REQUIRE(here_editor->getInvalidLine() == 0);
+  }
+
+  SECTION("edit inside a heredoc does not invalidate the tail")
+  {
+    MutableLines here({UnicodeString(u"<<END"), UnicodeString(u"foo"), UnicodeString(u"END"),
+                       UnicodeString(u"int x")});
+    auto here_editor = makeEditor(factory, here);
+    REQUIRE(here_editor->getInvalidLine() == here.size());
+    here.setLine(1, UnicodeString(u"foo2"));
+    here_editor->modifyLineEvent(1);
+    REQUIRE(here_editor->getInvalidLine() == here.size());
+  }
+
+  editor->removeRegionHandler(&counter);
+}

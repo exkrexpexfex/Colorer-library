@@ -344,6 +344,9 @@ void BaseEditor::modifyEvent(int topLine)
 void BaseEditor::modifyLineEvent(int line)
 {
   if (invalidLine > line) {
+    if (textParser->tryParseLine(line)) {
+      return;
+    }
     invalidLine = line;
   }
 }

@@ -195,11 +195,10 @@ class BaseEditor : public RegionHandler
 
   /**
    * Informs about single line modification event.
-   * Generally, this type of event can be processed much faster
-   * because of pre-checking line's changed structure and
-   * cancelling further parsing in case of unmodified text structure.
+   * Tries to reparse only that line. If the scheme stack past the line
+   * is unchanged, the rest of the file stays valid. Otherwise all text
+   * from this line is invalidated, same as modifyEvent.
    * @param line Modified line of text.
-   * @todo Not used yet! This must include special 'try' parse method.
    */
   void modifyLineEvent(int line);
 

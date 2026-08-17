@@ -79,6 +79,15 @@ class TextParser
   int parse(int from, int num, TextParseMode mode);
 
   /**
+   * Reparses a single line without dropping the cache tree.
+   * Returns true if the scheme stack that continues past this line is
+   * unchanged (same blocks, same start-RE captures). In that case the
+   * rest of the file does not need to be invalidated.
+   * RegionHandler still receives events for the parsed line.
+   */
+  bool tryParseLine(int line);
+
+  /**
    * Performs break of parsing process from external thread.
    * It is used to stop parse from external source. This is required
    * in some editor system implementations, where editor

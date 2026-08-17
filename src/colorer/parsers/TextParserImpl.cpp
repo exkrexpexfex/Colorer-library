@@ -91,7 +91,7 @@ int TextParser::Impl::parse(int from, int num, TextParseMode mode)
     if (parent != cache) {
       vtlist.restore(parent->vcache);
       parent->clender->end->setBackTrace(parent->backLine, &parent->matchstart);
-      colorize(parent->clender->end.get(), parent->clender->lowContentPriority);
+      colorize(parent->clender->end.get(), parent->clender->lowContentPriority, tracingTry);
       vtlist.clear();
     }
     else {
@@ -419,7 +419,13 @@ int TextParser::Impl::searchBL(SchemeNodeBlock* node, int no, int lowLen, int hi
   scheme_end->setBackTrace(backLine, &match);
 
   enterScheme(no, &match, node);
+  if (tracingTry) {
+    tryStack.push_back({ssubst, node, match, matchSpan(str, match)});
+  }
   colorize(scheme_end, node->lowContentPriority);
+  if (tracingTry && old_gy == current_parse_line && !tryStack.empty()) {
+    tryStack.pop_back();
+  }
 
   if (current_parse_line < end_line4parse) {
     leaveScheme(current_parse_line, &matchend, node);
@@ -533,7 +539,7 @@ int TextParser::Impl::searchMatch(const SchemeImpl* cscheme, int no, int lowLen,
   return MATCH_NOTHING;
 }
 
-bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority)
+bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority, bool tryPopOnEnd)
 {
   len = -1;
 
@@ -623,6 +629,14 @@ bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority)
 
     schemeStart = -1;
     if (res) {
+      if (tracingTry && tryPopOnEnd) {
+        if (tryStack.empty()) {
+          tryMismatch = true;
+        }
+        else {
+          tryStack.pop_back();
+        }
+      }
       stackLevel--;
       return true;
     }
@@ -637,4 +651,81 @@ bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority)
 void TextParser::Impl::setMaxBlockSize(int max_block_size)
 {
   maxBlockSize = max_block_size;
+}
+
+void TextParser::Impl::collectOpenLevels(ParseCache* node, std::vector<TryLevel>& out) const
+{
+  out.clear();
+  std::vector<TryLevel> rev;
+  for (ParseCache* p = node; p != nullptr && p != cache && p->clender != nullptr; p = p->parent) {
+    rev.push_back({p->scheme, p->clender, p->matchstart, matchSpan(p->backLine, p->matchstart)});
+  }
+  out.assign(rev.rbegin(), rev.rend());
+}
+
+UnicodeString TextParser::Impl::matchSpan(const UnicodeString* line, const SMatches& match)
+{
+  if (line == nullptr || match.s[0] < 0 || match.e[0] <= match.s[0] || match.e[0] > line->length()) {
+    return {};
+  }
+  return UnicodeString(*line, match.s[0], match.e[0] - match.s[0]);
+}
+
+bool TextParser::Impl::sameTryLevel(const TryLevel& a, const TryLevel& b)
+{
+  if (a.scheme != b.scheme || a.clender != b.clender) {
+    return false;
+  }
+  if (a.clender != nullptr && a.clender->end && a.clender->end->hasBackTrace() &&
+      a.startText != b.startText)
+  {
+    return false;
+  }
+  if (a.matchstart.cMatch != b.matchstart.cMatch || a.matchstart.cnMatch != b.matchstart.cnMatch) {
+    return false;
+  }
+  for (int i = 0; i < a.matchstart.cMatch; i++) {
+    if (a.matchstart.s[i] != b.matchstart.s[i] || a.matchstart.e[i] != b.matchstart.e[i]) {
+      return false;
+    }
+  }
+  for (int i = 0; i < a.matchstart.cnMatch; i++) {
+    if (a.matchstart.ns[i] != b.matchstart.ns[i] || a.matchstart.ne[i] != b.matchstart.ne[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool TextParser::Impl::tryParseLine(int line)
+{
+  if (!regionHandler || !lineSource || !baseScheme || line < 0) {
+    return false;
+  }
+
+  ParseCache* forward_at = nullptr;
+  ParseCache* expected_node = cache->searchLine(line + 1, &forward_at);
+  std::vector<TryLevel> expected;
+  collectOpenLevels(expected_node, expected);
+
+  ParseCache* current_node = cache->searchLine(line, &forward_at);
+  tracingTry = true;
+  tryMismatch = false;
+  collectOpenLevels(current_node, tryStack);
+
+  parse(line, 1, TextParseMode::TPM_CACHE_READ);
+
+  bool ok = !tryMismatch && tryStack.size() == expected.size();
+  if (ok) {
+    for (size_t i = 0; i < tryStack.size(); i++) {
+      if (!sameTryLevel(tryStack[i], expected[i])) {
+        ok = false;
+        break;
+      }
+    }
+  }
+  tracingTry = false;
+  tryMismatch = false;
+  tryStack.clear();
+  return ok;
 }
