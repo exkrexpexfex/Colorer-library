@@ -308,6 +308,20 @@ TEST_CASE("CRegExp groups and backreferences", "[cregexp]")
     REQUIRE(match.e[2] == 2);
   }
 
+  SECTION("a failed search offset does not keep captures")
+  {
+    const auto pre = ustr(u"/(a)x|b/");
+    const auto str = ustr(u"ab");
+    CRegExp re(&pre);
+    REQUIRE(re.isOk());
+    SMatches match;
+    REQUIRE(parse_re(re, str, match, true));
+    REQUIRE(match.s[0] == 1);
+    REQUIRE(match.e[0] == 2);
+    REQUIRE(match.s[1] == -1);
+    REQUIRE(match.e[1] == -1);
+  }
+
   SECTION("numeric groups beyond the slot limit stay non-capturing")
   {
     const auto ok_pattern = sequential_captures(MATCHES_NUM - 1);
@@ -500,6 +514,70 @@ TEST_CASE("CRegExp Colorer \\m \\M and scheme start", "[cregexp]")
     REQUIRE(match.s[0] == 2);
     REQUIRE(match.e[0] == 5);
     REQUIRE_FALSE(re.parse(&str, 0, str.length(), &match, 2));
+  }
+
+  SECTION("\\m flags reset between parse() calls on the same object")
+  {
+    const auto pre = ustr(u"/foo\\mbar|xyz/");
+    CRegExp re(&pre);
+    REQUIRE(re.isOk());
+    SMatches match;
+
+    const auto first = ustr(u"foobar");
+    REQUIRE(re.parse(&first, &match));
+    REQUIRE(match.s[0] == 3);
+    REQUIRE(match.e[0] == 6);
+
+    const auto second = ustr(u"xyz");
+    REQUIRE(re.parse(&second, &match));
+    REQUIRE(match.s[0] == 0);
+    REQUIRE(match.e[0] == 3);
+  }
+
+  SECTION("\\M flags reset between parse() calls on the same object")
+  {
+    const auto pre = ustr(u"/abc\\Mx|xyz/");
+    CRegExp re(&pre);
+    REQUIRE(re.isOk());
+    SMatches match;
+
+    const auto first = ustr(u"abcx");
+    REQUIRE(re.parse(&first, &match));
+    REQUIRE(match.s[0] == 0);
+    REQUIRE(match.e[0] == 3);
+
+    const auto second = ustr(u"xyz");
+    REQUIRE(re.parse(&second, &match));
+    REQUIRE(match.s[0] == 0);
+    REQUIRE(match.e[0] == 3);
+  }
+
+  SECTION("reused search RE does not keep \\m from a previous line")
+  {
+    const auto pre = ustr(u"/foo\\mbar|end/");
+    CRegExp re(&pre);
+    REQUIRE(re.isOk());
+    SMatches match;
+
+    const auto first = ustr(u"aaafoobar");
+    REQUIRE(parse_re(re, first, match, true));
+    REQUIRE(match.s[0] == 6);
+    REQUIRE(match.e[0] == 9);
+
+    const auto second = ustr(u"xxxend");
+    REQUIRE(parse_re(re, second, match, true));
+    REQUIRE(match.s[0] == 3);
+    REQUIRE(match.e[0] == 6);
+  }
+
+  SECTION("\\m does not leak between offsets inside one search")
+  {
+    require_match(u"/a\\mz|c/", u"abc", 2, 3, true);
+  }
+
+  SECTION("\\M does not leak between offsets inside one search")
+  {
+    require_match(u"/a\\Mz|c/", u"abc", 2, 3, true);
   }
 }
 

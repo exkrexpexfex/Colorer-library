@@ -1480,6 +1480,10 @@ inline bool CRegExp::parseRE(int pos)
   count_elem = 0;
   parseSteps = 0;
   stepBudgetExceeded = false;
+  // Early-out paths never reach the search loop; still drop \m/\M left on a
+  // reused end-RE from the previous parse().
+  startChange = false;
+  endChange = false;
   int toParse = pos;
 
   if (!positionMoves && firstCharMaskUseful) {
@@ -1513,6 +1517,11 @@ inline bool CRegExp::parseRE(int pos)
         continue;
       }
     }
+    startChange = false;
+    endChange = false;
+    matches->reset();
+    matches->cMatch = cMatch;
+    matches->cnMatch = cnMatch;
     if (lowParse(tree_root, nullptr, toParse)) {
       matches->topseSanitize(cMatch - 1);
       matches->topnseSanitize(cnMatch - 1);
