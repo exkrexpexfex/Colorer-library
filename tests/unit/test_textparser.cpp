@@ -84,7 +84,8 @@ class InvalidatingLineSource : public LineSource
   UnicodeString current_;
 };
 
-std::vector<RegionHit> parseLine(HrcLibrary& lib, const UnicodeString& type_name, const UnicodeString& line)
+std::vector<RegionHit> parseLine(HrcLibrary& lib, const UnicodeString& type_name, const UnicodeString& line,
+                                 bool chunk_long_lines = false)
 {
   auto* file_type = lib.getFileType(type_name);
   REQUIRE(file_type != nullptr);
@@ -96,6 +97,7 @@ std::vector<RegionHit> parseLine(HrcLibrary& lib, const UnicodeString& type_name
   parser.setFileType(file_type);
   parser.setLineSource(&source);
   parser.setRegionHandler(&handler);
+  parser.setChunkLongLines(chunk_long_lines);
   parser.parse(0, 1, TextParser::TextParseMode::TPM_CACHE_OFF);
   return handler.hits;
 }
@@ -337,11 +339,19 @@ TEST_CASE("Long lines keep coloring past the maxBlockSize window", "[textparser]
     prefix.append(' ');
   }
 
-  SECTION("keyword after the first 1000 characters is still matched")
+  SECTION("by default the rest of the line after one window is skipped")
   {
     UnicodeString line = prefix;
     line.append(UnicodeString(u"If"));
     const auto hits = parseLine(lib, UnicodeString("long_line"), line);
+    REQUIRE(hits.empty());
+  }
+
+  SECTION("keyword after the first 1000 characters is still matched")
+  {
+    UnicodeString line = prefix;
+    line.append(UnicodeString(u"If"));
+    const auto hits = parseLine(lib, UnicodeString("long_line"), line, true);
     REQUIRE(hits.size() == 1);
     REQUIRE(hits[0].start == 1100);
     REQUIRE(hits[0].end == 1102);
@@ -352,7 +362,7 @@ TEST_CASE("Long lines keep coloring past the maxBlockSize window", "[textparser]
   {
     UnicodeString line = prefix;
     line.append(UnicodeString(u"Zzz"));
-    const auto hits = parseLine(lib, UnicodeString("long_line"), line);
+    const auto hits = parseLine(lib, UnicodeString("long_line"), line, true);
     REQUIRE(hits.size() == 1);
     REQUIRE(hits[0].start == 1100);
     REQUIRE(hits[0].end == 1103);

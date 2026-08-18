@@ -243,6 +243,11 @@ class BaseEditor : public RegionHandler
 
   bool haveInvalidLine() const;
   void setMaxBlockSize(int max_block_size);
+  /**
+   * See TextParser::setChunkLongLines. Default is false (one window per line).
+   */
+  void setChunkLongLines(bool chunk);
+  bool getChunkLongLines() const;
 
  private:
   FileType* chooseFileTypeCh(const UnicodeString* fileName, int chooseStr, int chooseLen);

@@ -536,3 +536,13 @@ void BaseEditor::setMaxBlockSize(int max_block_size)
 {
   textParser->setMaxBlockSize(max_block_size);
 }
+
+void BaseEditor::setChunkLongLines(bool chunk)
+{
+  textParser->setChunkLongLines(chunk);
+}
+
+bool BaseEditor::getChunkLongLines() const
+{
+  return textParser->getChunkLongLines();
+}

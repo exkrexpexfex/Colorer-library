@@ -42,3 +42,13 @@ void TextParser::setMaxBlockSize(int max_block_size)
 {
   pimpl->setMaxBlockSize(max_block_size);
 }
+
+void TextParser::setChunkLongLines(bool chunk)
+{
+  pimpl->setChunkLongLines(chunk);
+}
+
+bool TextParser::getChunkLongLines() const
+{
+  return pimpl->getChunkLongLines();
+}

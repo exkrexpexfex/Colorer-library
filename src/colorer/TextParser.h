@@ -101,11 +101,19 @@ class TextParser
   void clearCache();
   /**
    * Window length for one regex/content pass on a line (default 1000).
-   * Does not skip the rest of the line: the parser continues with the next
-   * window until the line ends. Bounds each match attempt so a minified
-   * 10k+ line cannot run a single RE against the whole remainder.
+   * Bounds each match attempt. If the parent end-RE is not found, the parser
+   * either stops this line (default) or continues with the next window when
+   * setChunkLongLines(true) is set.
    */
   void setMaxBlockSize(int max_block_size);
+  /**
+   * When false (default), a line is colored for at most one maxBlockSize
+   * window and the rest of that line is skipped — the historic editor-safe
+   * behavior on minified/pathological lines.
+   * When true, coloring continues in maxBlockSize windows until the line ends.
+   */
+  void setChunkLongLines(bool chunk);
+  bool getChunkLongLines() const;
 
   ~TextParser() = default;
 

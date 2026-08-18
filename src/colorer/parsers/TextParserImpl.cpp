@@ -640,8 +640,8 @@ bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority, b
       stackLevel--;
       return true;
     }
-    if (gx < len) {
-      // Parent end not found: keep the maxBlockSize window, but stay on this line.
+    if (chunkLongLines && gx < len) {
+      // Parent end not found: next maxBlockSize window on this line.
       continue;
     }
     schemeStart = -1;
@@ -656,6 +656,16 @@ bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority, b
 void TextParser::Impl::setMaxBlockSize(int max_block_size)
 {
   maxBlockSize = max_block_size;
+}
+
+void TextParser::Impl::setChunkLongLines(bool chunk)
+{
+  chunkLongLines = chunk;
+}
+
+bool TextParser::Impl::getChunkLongLines() const
+{
+  return chunkLongLines;
 }
 
 void TextParser::Impl::collectOpenLevels(ParseCache* node, std::vector<TryLevel>& out) const

@@ -27,6 +27,8 @@ class TextParser::Impl
   void breakParse();
   void initCache();
   void setMaxBlockSize(int max_block_size);
+  void setChunkLongLines(bool chunk);
+  bool getChunkLongLines() const;
 
  private:
   struct TryLevel
@@ -68,6 +70,7 @@ class TextParser::Impl
 
   // maximum block size of regexp in string line
   int maxBlockSize = 1000;
+  bool chunkLongLines = false;
 
   void fillInvisibleSchemes(ParseCache* cache);
   void addRegion(int lno, int sx, int ex, const Region* region);
