@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hrc>
+  <prototype name="kw_sensitive" group="test" description="case sensitive keywords">
+    <filename>/\.kwsens$/</filename>
+  </prototype>
+  <prototype name="kw_ignore" group="test" description="ignorecase keywords">
+    <filename>/\.kwign$/</filename>
+  </prototype>
+  <prototype name="kw_mixed" group="test" description="mixed keyword case">
+    <filename>/\.kwmix$/</filename>
+  </prototype>
+  <type name="kw_sensitive">
+    <region name="Keyword"/>
+    <scheme name="kw_sensitive">
+      <keywords region="Keyword" ignorecase="no">
+        <word name="If"/>
+      </keywords>
+    </scheme>
+  </type>
+  <type name="kw_ignore">
+    <region name="Keyword"/>
+    <scheme name="kw_ignore">
+      <keywords region="Keyword" ignorecase="yes">
+        <word name="If"/>
+      </keywords>
+    </scheme>
+  </type>
+  <type name="kw_mixed">
+    <region name="Kw"/>
+    <region name="KwI"/>
+    <scheme name="kw_mixed">
+      <keywords region="Kw" ignorecase="no">
+        <word name="If"/>
+      </keywords>
+      <keywords region="KwI" ignorecase="yes">
+        <word name="Then"/>
+      </keywords>
+    </scheme>
+  </type>
+</hrc>

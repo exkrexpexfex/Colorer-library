@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hrc>
+  <prototype name="bl_quote" group="test" description="block without backtrace">
+    <filename>/\.blquote$/</filename>
+  </prototype>
+  <prototype name="bl_yquote" group="test" description="block with named backtrace">
+    <filename>/\.blyquote$/</filename>
+  </prototype>
+  <prototype name="bl_here" group="test" description="heredoc with named backtrace">
+    <filename>/\.blhere$/</filename>
+  </prototype>
+  <type name="bl_quote">
+    <region name="Content"/>
+    <scheme name="string">
+      <regexp match="/[^']+/" region="Content"/>
+    </scheme>
+    <scheme name="bl_quote">
+      <block start="/'/" end="/'/" scheme="string"/>
+    </scheme>
+  </type>
+  <type name="bl_yquote">
+    <region name="Content"/>
+    <scheme name="string">
+      <regexp match="/[^'&quot;]+/" region="Content"/>
+    </scheme>
+    <scheme name="bl_yquote">
+      <block start="/(?{q}['&quot;])/" end="/\y{q}/" scheme="string"/>
+    </scheme>
+  </type>
+  <type name="bl_here">
+    <region name="Content"/>
+    <scheme name="here">
+      <regexp match="/foo/" region="Content"/>
+    </scheme>
+    <scheme name="bl_here">
+      <block start="/&lt;&lt;(?{t}\w+)/" end="/\y{t}/" scheme="here"/>
+    </scheme>
+  </type>
+</hrc>

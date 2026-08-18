@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hrc>
+  <prototype name="virt_plain" group="test" description="inherit without virtual">
+    <filename>/\.vplain$/</filename>
+  </prototype>
+  <prototype name="virt_subst" group="test" description="inherit with virtual substitution">
+    <filename>/\.vsubst$/</filename>
+  </prototype>
+  <prototype name="virt_block" group="test" description="block scheme substituted via virtual">
+    <filename>/\.vblock$/</filename>
+  </prototype>
+  <type name="virt_plain">
+    <region name="BaseKw"/>
+    <scheme name="base">
+      <keywords region="BaseKw" ignorecase="no">
+        <word name="foo"/>
+      </keywords>
+    </scheme>
+    <scheme name="virt_plain">
+      <inherit scheme="base"/>
+    </scheme>
+  </type>
+  <type name="virt_subst">
+    <region name="BaseKw"/>
+    <region name="AltKw"/>
+    <scheme name="base">
+      <keywords region="BaseKw" ignorecase="no">
+        <word name="foo"/>
+      </keywords>
+    </scheme>
+    <scheme name="alt">
+      <keywords region="AltKw" ignorecase="no">
+        <word name="bar"/>
+      </keywords>
+    </scheme>
+    <scheme name="inner">
+      <inherit scheme="base"/>
+    </scheme>
+    <scheme name="virt_subst">
+      <inherit scheme="inner">
+        <virtual scheme="base" subst-scheme="alt"/>
+      </inherit>
+    </scheme>
+  </type>
+  <type name="virt_block">
+    <region name="AltKw"/>
+    <scheme name="base">
+      <keywords region="AltKw" ignorecase="no">
+        <word name="foo"/>
+      </keywords>
+    </scheme>
+    <scheme name="alt">
+      <keywords region="AltKw" ignorecase="no">
+        <word name="bar"/>
+      </keywords>
+    </scheme>
+    <scheme name="container">
+      <block start="/\[/" end="/\]/" scheme="base"/>
+    </scheme>
+    <scheme name="virt_block">
+      <inherit scheme="container">
+        <virtual scheme="base" subst-scheme="alt"/>
+      </inherit>
+    </scheme>
+  </type>
+</hrc>

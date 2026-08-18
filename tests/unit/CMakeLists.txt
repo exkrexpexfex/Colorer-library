@@ -2,12 +2,18 @@ project(unit_tests CXX)
 
 set(unit_tests_SRC
     test_main.cpp
+    test_cregexp.cpp
     test_exception.cpp
     test_filetype.cpp
     test_environment.cpp
     test_hrcparsing.cpp
     test_xmlinputsource.cpp
     test_xmlreader.cpp
+    test_regionmapper.cpp
+    test_ustr.cpp
+    test_textparser.cpp
+    test_lineregions.cpp
+    test_baseeditor.cpp
     test_common.h
     TestLogger.h
     ${CMAKE_SOURCE_DIR}/external/catch2/catch_amalgamated.cpp
