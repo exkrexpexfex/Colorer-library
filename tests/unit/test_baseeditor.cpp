@@ -61,6 +61,17 @@ class CountHandler : public RegionHandler
   }
 };
 
+bool hasRegion(const LineRegion* regions, const char* name)
+{
+  const UnicodeString want(name);
+  for (const LineRegion* lr = regions; lr != nullptr; lr = lr->next) {
+    if (lr->region != nullptr && lr->region->getName().compare(want) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 HrcLibrary& loadTryLine(ParserFactory& factory)
 {
   auto hrc_path = fs::path(__FILE__).parent_path() / "data" / "type_tryline.hrc";
@@ -168,4 +179,102 @@ TEST_CASE("modifyLineEvent keeps the tail valid when the scheme stack is unchang
   }
 
   editor->removeRegionHandler(&counter);
+}
+
+TEST_CASE("Sequential getLineRegions colors the default window boundary lines", "[baseeditor]")
+{
+  ParserFactory factory;
+  loadTryLine(factory);
+
+  std::vector<UnicodeString> lines;
+  lines.reserve(50);
+  for (int i = 0; i < 50; i++) {
+    lines.emplace_back(u"int a");
+  }
+  MutableLines source(std::move(lines));
+  BaseEditor editor(&factory, &source);
+  auto* type = factory.getHrcLibrary().getFileType(UnicodeString("try_line"));
+  REQUIRE(type != nullptr);
+  editor.setFileType(type);
+  editor.lineCountEvent(source.size());
+  // colorer -ht never calls visibleTextEvent; wSize stays at the ctor default 20.
+  for (int i : {0, 20, 21, 40, 41}) {
+    REQUIRE(hasRegion(editor.getLineRegions(i), "try_line:Kw"));
+  }
+}
+
+TEST_CASE("A small window resize does not drop cached line regions", "[baseeditor]")
+{
+  ParserFactory factory;
+  loadTryLine(factory);
+
+  std::vector<UnicodeString> lines;
+  lines.reserve(40);
+  for (int i = 0; i < 40; i++) {
+    lines.emplace_back(u"int a");
+  }
+  MutableLines source(std::move(lines));
+  BaseEditor editor(&factory, &source);
+  auto* type = factory.getHrcLibrary().getFileType(UnicodeString("try_line"));
+  REQUIRE(type != nullptr);
+  editor.setFileType(type);
+  editor.lineCountEvent(source.size());
+  editor.visibleTextEvent(0, 20);
+  REQUIRE(hasRegion(editor.getLineRegions(0), "try_line:Kw"));
+  REQUIRE(editor.getInvalidLine() >= 20);
+
+  CountHandler counter;
+  editor.addRegionHandler(&counter);
+  editor.visibleTextEvent(0, 21);
+  REQUIRE(hasRegion(editor.getLineRegions(0), "try_line:Kw"));
+  REQUIRE(counter.clear_lines == 0);
+
+  counter.clear_lines = 0;
+  editor.visibleTextEvent(0, 50);
+  REQUIRE(editor.getLineRegions(0) != nullptr);
+  REQUIRE(counter.clear_lines == source.size());
+  editor.removeRegionHandler(&counter);
+}
+
+TEST_CASE("idleJob warms the parse cache without moving visible line regions", "[baseeditor]")
+{
+  ParserFactory factory;
+  loadTryLine(factory);
+
+  std::vector<UnicodeString> lines;
+  lines.reserve(80);
+  for (int i = 0; i < 80; i++) {
+    if (i == 0) {
+      lines.emplace_back(u"int a");
+    }
+    else if (i == 60) {
+      lines.emplace_back(u"foo");
+    }
+    else {
+      lines.emplace_back(u"x");
+    }
+  }
+  MutableLines source(std::move(lines));
+  BaseEditor editor(&factory, &source);
+  auto* type = factory.getHrcLibrary().getFileType(UnicodeString("try_line"));
+  REQUIRE(type != nullptr);
+  editor.setFileType(type);
+  editor.lineCountEvent(source.size());
+  editor.visibleTextEvent(0, 20);
+  REQUIRE(hasRegion(editor.getLineRegions(0), "try_line:Kw"));
+
+  CountHandler counter;
+  editor.addRegionHandler(&counter);
+  while (editor.haveInvalidLine()) {
+    editor.idleJob(100);
+  }
+  REQUIRE(editor.getInvalidLine() == source.size());
+  REQUIRE(hasRegion(editor.getLineRegions(0), "try_line:Kw"));
+
+  editor.visibleTextEvent(50, 20);
+  REQUIRE_FALSE(hasRegion(editor.getLineRegions(60), "try_line:Kw"));
+
+  editor.visibleTextEvent(0, 20);
+  REQUIRE(hasRegion(editor.getLineRegions(0), "try_line:Kw"));
+  editor.removeRegionHandler(&counter);
 }

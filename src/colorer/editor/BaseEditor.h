@@ -175,7 +175,8 @@ class BaseEditor : public RegionHandler
    *   is used.
    * @param rebuildRegions If true, regions will be recalculated and
    *   repositioned for the specified line number usage. If false,
-   *   parser will just start internal cache rebuilding procedure.
+   *   parser only updates its internal line cache: the visible window
+   *   and the LineRegion ring stay where they are.
    */
   void validate(int lno, bool rebuildRegions);
 
