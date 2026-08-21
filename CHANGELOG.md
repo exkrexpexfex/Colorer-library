@@ -1,5 +1,58 @@
-## [1.5.0] - 2025-07-07
+## [Unreleased]
 
+## [1.6.0] - 2026-08-22
+
+Parser and regexp performance, incremental single-line reparse, and CRegExp correctness. The largest performance work comes from far2l ([#42](https://github.com/colorer/Colorer-library/pull/42)).
+
+### Performance
+
+- **Scheme matching.** Nodes are pre-filtered by the first character of the current position; schemes keep ordered candidate lists so inheritance and dynamic virtualization are not scanned on every character. Static inherited scheme nodes are inlined into the parent scheme.
+- **Keywords.** Keyword search is faster; the lowercase copy of a line is built only when an ignore-case keyword is actually tried. Fixed a first-character index that used the original XML text instead of the stored keyword, which could miscolor some words.
+- **Regular expressions.** First-character analysis skips impossible offsets during search (`positionMoves`). A match fails after a bounded number of backtracking steps (default 1 000 000) instead of hanging on pathological patterns.
+- **Hot path.** Fewer `UnicodeString` copies, faster Latin case conversion and string compare (legacy), lazy `SMatches` arrays instead of full zerofill, simpler `CharacterClass`/`BitArray`.
+- **Editor memory.** `LineRegion` objects are pooled and matching `rdef` storage is reused. Empty virtual tables are skipped. The start line of a block is copied only when the end RE uses backtrace (`\y`/`\Y`).
+- **Editor window.** The `LineRegion` buffer is kept across small window resizes; idle cache warming does not move the visible region ring.
+- **Logging.** Log macros check the current level before formatting. Custom `Logger` implementations must provide `getCurrentLogLevel()`.
+
+### Parser and editor
+
+- **Incremental edit.** `TextParser::tryParseLine` / `BaseEditor::modifyLineEvent` reparse only the edited line when the scheme stack (open blocks and start-RE captures) is unchanged; otherwise the rest of the file is invalidated as before.
+- **Long lines.** Coloring of a line is still one `maxBlockSize` window by default (editor-safe on minified/pathological lines). `setChunkLongLines(true)` continues coloring in successive windows until the line ends.
+- Parser no longer throws when `LineSource` returns a null line (for example during editor shutdown); parsing stops on that line.
+
+### Regular expressions (CRegExp)
+
+Refactoring and correctness ([#44](https://github.com/colorer/Colorer-library/pull/44)):
+
+- Isolate each search offset: reset `\m`/`\M` and all capture slots so a failed attempt cannot leak into the next.
+- Preserve compile errors instead of overwriting them with `EBRACKETS`; reject inverted `{n,m}` ranges and out-of-range escapes at compile time.
+- Groups beyond 16 slots are non-capturing so existing HRC still compiles.
+- Fix `SRegInfo` destructor (free union members by opcode); clear first-char cache on pattern replace; sanitize backtrace copy bounds.
+- Parse groups in-place, grow the parse stack with `std::vector`, drop unused ops and unfinished named-match hash code.
+- `CRegExp` / `SRegInfo` are not copyable or movable; getters are `const`.
+- ICU ignore-case character classes fold the current character (legacy path already did); `[aX]/i` now matches `x`.
+
+### API
+
+- `FileType::getParamValueHex` — read a filetype parameter as a hex integer.
+- `TextParser::tryParseLine`, `TextParser::setChunkLongLines` / `getChunkLongLines` (also on `BaseEditor`).
+- `CRegExp::canStartWith`, `setParseStepLimit` / `getParseStepLimit`, `hasBackTrace`, `clearRegExpStack`.
+- `Logger::getCurrentLogLevel` (pure virtual; required for custom loggers).
+
+### Fixed
+
+- Use-after-free when resolving `COLORER_HRD` in `ParserFactory` ([#40](https://github.com/colorer/Colorer-library/pull/40)).
+- Crash on a transient null line and dangling temporary in `UnicodeString(int)` ([#41](https://github.com/colorer/Colorer-library/pull/41)).
+- `RegionMapper` cache resize: region id 0 no longer throws.
+- Windows and ICU builds.
+
+### Tests and CI
+
+- Catch2 v2 → v3 ([#43](https://github.com/colorer/Colorer-library/pull/43)).
+- Unit tests for CRegExp, TextParser, BaseEditor, LineRegions, RegionMapper, UStr; tests enabled for Linux Release.
+- GitHub Actions updated (checkout, artifacts, MSVC setup, CodeQL).
+
+## [1.5.0] - 2025-07-07
 
 ### Added
 - documentation website https://colorer.github.io  (so far only in Russian)
