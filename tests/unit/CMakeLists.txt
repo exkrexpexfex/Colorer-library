@@ -23,7 +23,8 @@ set(unit_tests_SRC
 
 add_executable(unit_tests ${unit_tests_SRC})
 
-target_link_libraries(unit_tests PRIVATE colorer_lib)
+find_package(Threads REQUIRED)
+target_link_libraries(unit_tests PRIVATE colorer_lib Threads::Threads)
 target_include_directories(unit_tests PUBLIC ${CMAKE_SOURCE_DIR}/external)
 
 set_target_properties(unit_tests PROPERTIES

@@ -14,7 +14,6 @@ ParserFactory::Impl::Impl()
 ParserFactory::Impl::~Impl()
 {
   delete hrc_library;
-  CRegExp::clearRegExpStack();
 }
 
 void ParserFactory::Impl::loadCatalog(const UnicodeString* catalog_path)

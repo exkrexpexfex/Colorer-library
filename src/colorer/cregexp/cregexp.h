@@ -221,7 +221,7 @@ struct StackElem
    - No string length changes on case mappings (only 1 <-> 1 mappings),
 \par 2.2. Algorithmic problems:
    - Explicit parse stack (grows as needed and is reused by all CRegExp
-     instances; matching is single-threaded).
+     instances on the same thread).
 
     @ingroup cregexp
 */
@@ -360,7 +360,7 @@ class CRegExp
   void insert_stack(SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter, ReAction ifTrueReturn,
                     ReAction ifFalseReturn, SRegInfo** re2, SRegInfo** prev2, int toParse2);
 
-  static std::vector<StackElem> RegExpStack;
+  static thread_local std::vector<StackElem> RegExpStack;
 
  public:
   static void clearRegExpStack();
