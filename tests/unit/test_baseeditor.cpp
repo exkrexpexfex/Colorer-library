@@ -5,6 +5,7 @@
 #include "colorer/ParserFactory.h"
 #include "colorer/RegionHandler.h"
 #include "colorer/editor/BaseEditor.h"
+#include "colorer/FileType.h"
 #include "colorer/utils/FileSystems.h"
 #include "colorer/xml/XmlInputSource.h"
 
@@ -277,4 +278,13 @@ TEST_CASE("idleJob warms the parse cache without moving visible line regions", "
   editor.visibleTextEvent(0, 20);
   REQUIRE(hasRegion(editor.getLineRegions(0), "try_line:Kw"));
   editor.removeRegionHandler(&counter);
+}
+
+TEST_CASE("setFileType rejects a null type", "[baseeditor]")
+{
+  ParserFactory factory;
+  MutableLines source({UnicodeString(u"x")});
+  BaseEditor editor(&factory, &source);
+  REQUIRE_THROWS_AS(editor.setFileType(static_cast<FileType*>(nullptr)), FileTypeException);
+  REQUIRE_THROWS_AS(editor.setFileType(UnicodeString("no_such_type")), FileTypeException);
 }

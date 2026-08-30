@@ -11,6 +11,8 @@ set(unit_tests_SRC
     test_xmlreader.cpp
     test_regionmapper.cpp
     test_ustr.cpp
+    test_encodings.cpp
+    test_fileinputsource.cpp
     test_textparser.cpp
     test_lineregions.cpp
     test_baseeditor.cpp
