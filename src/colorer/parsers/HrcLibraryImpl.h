@@ -1,6 +1,7 @@
 #ifndef COLORER_HRCLIBRARYIMPL_H
 #define COLORER_HRCLIBRARYIMPL_H
 
+#include <shared_mutex>
 #include <unordered_map>
 #include "colorer/HrcLibrary.h"
 #include "colorer/cregexp/cregexp.h"
@@ -38,6 +39,8 @@ class HrcLibrary::Impl
   size_t getRegionCount() const;
   const Region* getRegion(unsigned int id) const;
   const Region* getRegion(const UnicodeString* name);
+
+  mutable std::shared_mutex access;
 
  protected:
   enum class QualifyNameType { QNT_DEFINE, QNT_SCHEME, QNT_ENTITY };

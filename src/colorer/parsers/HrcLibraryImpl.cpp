@@ -317,6 +317,7 @@ void HrcLibrary::Impl::addPrototype(const XMLNode& elem)
 
   parsePrototypeBlock(elem, type);
 
+  ptype->library_access = &access;
   fileTypeHash.try_emplace(typeName, type);
   if (!ptype->isPackage) {
     fileTypeVector.push_back(type);

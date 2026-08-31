@@ -20,6 +20,11 @@ void TextParser::Impl::setFileType(FileType* type)
   initCache();
 }
 
+FileType* TextParser::Impl::currentFileType() const
+{
+  return baseScheme != nullptr ? baseScheme->fileType : nullptr;
+}
+
 void TextParser::Impl::setLineSource(LineSource* lh)
 {
   lineSource = lh;

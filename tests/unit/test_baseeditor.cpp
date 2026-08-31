@@ -1,4 +1,6 @@
+#include <atomic>
 #include <catch2/catch_amalgamated.hpp>
+#include <thread>
 #include <vector>
 #include "colorer/HrcLibrary.h"
 #include "colorer/LineSource.h"
@@ -302,6 +304,61 @@ TEST_CASE("Probe ParserFactory on the same thread does not leak types into maste
   MutableLines source({UnicodeString(u"int a")});
   auto editor = makeEditor(master, source);
   REQUIRE(hasRegion(editor->getLineRegions(0), "try_line:Kw"));
+}
+
+TEST_CASE("two editors parse one HrcLibrary concurrently", "[baseeditor]")
+{
+  ParserFactory factory;
+  loadTryLine(factory);
+
+  MutableLines source_a({UnicodeString(u"int a")});
+  MutableLines source_b({UnicodeString(u"int b")});
+  auto editor_a = makeEditor(factory, source_a);
+  auto editor_b = makeEditor(factory, source_b);
+
+  std::atomic<int> hits {0};
+  auto paint = [&hits](BaseEditor* editor) {
+    for (int i = 0; i < 200; i++) {
+      REQUIRE(hasRegion(editor->getLineRegions(0), "try_line:Kw"));
+      hits++;
+    }
+  };
+
+  std::thread t1([&] { paint(editor_a.get()); });
+  std::thread t2([&] { paint(editor_b.get()); });
+  t1.join();
+  t2.join();
+  REQUIRE(hits == 400);
+}
+
+TEST_CASE("loading another type does not disturb a concurrent parse", "[baseeditor]")
+{
+  ParserFactory factory;
+  loadTryLine(factory);
+
+  MutableLines source({UnicodeString(u"int a")});
+  auto editor = makeEditor(factory, source);
+
+  std::atomic<bool> parsing {true};
+  std::atomic<int> paints {0};
+  std::thread painter([&] {
+    while (parsing.load()) {
+      REQUIRE(hasRegion(editor->getLineRegions(0), "try_line:Kw"));
+      paints++;
+    }
+  });
+
+  auto block_path = fs::path(__FILE__).parent_path() / "data" / "type_block.hrc";
+  UnicodeString block_location(block_path.c_str());
+  factory.loadHrcPath(&block_location);
+
+  parsing = false;
+  painter.join();
+
+  REQUIRE(paints > 0);
+  REQUIRE(hasRegion(editor->getLineRegions(0), "try_line:Kw"));
+  REQUIRE(factory.getHrcLibrary().getFileType(UnicodeString("bl_quote")) != nullptr);
+  REQUIRE(factory.getHrcLibrary().getFileType(UnicodeString("try_line")) != nullptr);
 }
 
 TEST_CASE("setFileType rejects a null type", "[baseeditor]")

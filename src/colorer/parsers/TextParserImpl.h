@@ -24,6 +24,7 @@ class TextParser::Impl
   void setRegionHandler(RegionHandler* rh);
   int parse(int from, int num, TextParseMode mode);
   bool tryParseLine(int line);
+  FileType* currentFileType() const;
   void breakParse();
   void initCache();
   void setMaxBlockSize(int max_block_size);
