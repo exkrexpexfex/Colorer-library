@@ -132,6 +132,9 @@ void BaseEditor::remapLRS(bool recreate)
 
 void BaseEditor::setFileType(FileType* ftype)
 {
+  if (ftype == nullptr) {
+    throw FileTypeException("FileType is null");
+  }
   COLORER_LOG_DEBUG("[BaseEditor] setFileType: %", ftype->getName());
   currentFileType = ftype;
   parserFactory->getHrcLibrary().loadFileType(ftype);

@@ -289,6 +289,9 @@ FileType* ConsoleTools::selectType(HrcLibrary* hrcLibrary, LineSource* lineSourc
     }
     type = hrcLibrary->chooseFileType(file_name.get(), &textStart, 0);
   }
+  if (type == nullptr) {
+    throw FileTypeException("Can't detect file type");
+  }
   return type;
 }
 

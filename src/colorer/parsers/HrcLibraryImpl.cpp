@@ -14,6 +14,9 @@ HrcLibrary::Impl::Impl()
   regionNamesHash.reserve(1000);
   regionNamesVector.reserve(1000);
   schemeHash.reserve(4000);
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+  zip_cache_ptr = XmlJarCache::bound() != nullptr ? XmlJarCache::bound() : &zip_cache;
+#endif
 }
 
 HrcLibrary::Impl::~Impl()
@@ -40,6 +43,10 @@ void HrcLibrary::Impl::loadSource(XmlInputSource* input_source, const LoadType l
   if (!input_source) {
     throw HrcLibraryException("Can't open stream - 'null' is bad stream.");
   }
+
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+  XmlJarCache::Current jar_scope(*zip_cache_ptr);
+#endif
 
   // Сохраняем текущий контекст парсинга файла, т.к. у нас рекурсивное использование
   XmlInputSource* temp_is = current_input_source;
@@ -121,6 +128,9 @@ void HrcLibrary::Impl::loadFileType(FileType* filetype)
 
 void HrcLibrary::Impl::loadHrcSettings(const XmlInputSource& is)
 {
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+  XmlJarCache::Current jar_scope(*zip_cache_ptr);
+#endif
   XmlReader xml_parser(is);
   if (!xml_parser.parse()) {
     throw HrcLibraryException("Error reading " + is.getPath());
@@ -307,6 +317,7 @@ void HrcLibrary::Impl::addPrototype(const XMLNode& elem)
 
   parsePrototypeBlock(elem, type);
 
+  ptype->library_access = &access;
   fileTypeHash.try_emplace(typeName, type);
   if (!ptype->isPackage) {
     fileTypeVector.push_back(type);

@@ -1,6 +1,8 @@
 #include "colorer/parsers/FileTypeImpl.h"
 #include "colorer/parsers/TextParserImpl.h"
 
+#include <shared_mutex>
+
 TextParser::TextParser() : pimpl(spimpl::make_unique_impl<Impl>()) {}
 
 void TextParser::breakParse()
@@ -15,11 +17,21 @@ void TextParser::clearCache()
 
 int TextParser::parse(int from, int num, TextParseMode mode)
 {
+  std::shared_lock<std::shared_mutex> hrc_lock;
+  FileType* type = pimpl->currentFileType();
+  if (type != nullptr && type->pimpl->library_access != nullptr) {
+    hrc_lock = std::shared_lock<std::shared_mutex>(*type->pimpl->library_access);
+  }
   return pimpl->parse(from, num, mode);
 }
 
 bool TextParser::tryParseLine(int line)
 {
+  std::shared_lock<std::shared_mutex> hrc_lock;
+  FileType* type = pimpl->currentFileType();
+  if (type != nullptr && type->pimpl->library_access != nullptr) {
+    hrc_lock = std::shared_lock<std::shared_mutex>(*type->pimpl->library_access);
+  }
   return pimpl->tryParseLine(line);
 }
 

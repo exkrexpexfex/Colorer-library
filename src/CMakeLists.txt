@@ -241,8 +241,9 @@ else()
   )
 endif()
 
+find_package(Threads REQUIRED)
 target_link_libraries(colorer_lib
-        PUBLIC LibXml2::LibXml2
+        PUBLIC LibXml2::LibXml2 Threads::Threads
 )
 
 if(COLORER_USE_ICU_STRINGS)

@@ -1,9 +1,11 @@
+#include <atomic>
+#include <thread>
 #include <catch2/catch_amalgamated.hpp>
 #include "colorer/utils/Environment.h"
 #include "colorer/xml/XmlReader.h"
 #include "test_common.h"
 
-TEST_CASE("Test read simple xml")
+TEST_CASE("Test read simple xml", "[xmlreader]")
 {
   logger->clean_messages();
 
@@ -16,7 +18,7 @@ TEST_CASE("Test read simple xml")
   REQUIRE(logger->message_print() == false);
 }
 
-TEST_CASE("Test read catalog.xml")
+TEST_CASE("Test read catalog.xml", "[xmlreader]")
 {
   logger->clean_messages();
 
@@ -29,7 +31,7 @@ TEST_CASE("Test read catalog.xml")
   REQUIRE(logger->message_print() == false);
 }
 
-TEST_CASE("Test read entity with env")
+TEST_CASE("Test read entity with env", "[xmlreader]")
 {
   logger->clean_messages();
 
@@ -45,7 +47,7 @@ TEST_CASE("Test read entity with env")
 }
 
 #ifdef COLORER_FEATURE_ZIPINPUTSOURCE
-TEST_CASE("Test read allpacked catalog.xml")
+TEST_CASE("Test read allpacked catalog.xml", "[xmlreader]")
 {
   logger->clean_messages();
 
@@ -58,7 +60,7 @@ TEST_CASE("Test read allpacked catalog.xml")
   REQUIRE(logger->message_print() == false);
 }
 
-TEST_CASE("Test read jar entity with env")
+TEST_CASE("Test read jar entity with env", "[xmlreader]")
 {
   logger->clean_messages();
 
@@ -74,3 +76,73 @@ TEST_CASE("Test read jar entity with env")
 }
 
 #endif
+
+TEST_CASE("Sequential XML parses on one thread keep independent entity bases", "[xmlreader]")
+{
+  logger->clean_messages();
+  auto work_dir = fs::current_path();
+  colorer::Environment::setOSEnv("CUR_DIR", work_dir.c_str());
+
+  auto parse_catalog = [](const char16_t* path) {
+    UnicodeString p(path);
+    XmlInputSource is(p);
+    XmlReader reader(is);
+    REQUIRE(reader.parse());
+    std::list<XMLNode> nodes;
+    reader.getNodes(nodes);
+    REQUIRE_FALSE(nodes.empty());
+    REQUIRE(nodes.begin()->name == UnicodeString(u"catalog"));
+  };
+
+  parse_catalog(u"data/catalog.xml");
+  parse_catalog(u"data/catalog-env.xml");
+  parse_catalog(u"data/catalog.xml");
+  REQUIRE(logger->message_print() == false);
+}
+
+TEST_CASE("Overlapping XML parses keep independent entity bases", "[xmlreader]")
+{
+  logger->clean_messages();
+  auto work_dir = fs::current_path();
+  colorer::Environment::setOSEnv("CUR_DIR", work_dir.c_str());
+
+  std::atomic<int> ok{0};
+  std::atomic<int> failures{0};
+
+  auto parse_one = [&](const char16_t* path) {
+    try {
+      UnicodeString p(path);
+      XmlInputSource is(p);
+      XmlReader reader(is);
+      if (!reader.parse()) {
+        failures++;
+        return;
+      }
+      std::list<XMLNode> nodes;
+      reader.getNodes(nodes);
+      if (nodes.empty() || nodes.begin()->name != UnicodeString(u"catalog")) {
+        failures++;
+        return;
+      }
+      ok++;
+    } catch (...) {
+      failures++;
+    }
+  };
+
+  std::thread t1([&] {
+    for (int i = 0; i < 40; i++) {
+      parse_one(u"data/catalog.xml");
+    }
+  });
+  std::thread t2([&] {
+    for (int i = 0; i < 40; i++) {
+      parse_one(u"data/catalog-env.xml");
+    }
+  });
+  t1.join();
+  t2.join();
+  REQUIRE(failures.load() == 0);
+  REQUIRE(ok.load() == 80);
+  REQUIRE(logger->message_print() == false);
+}

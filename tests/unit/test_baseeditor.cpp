@@ -1,10 +1,13 @@
+#include <atomic>
 #include <catch2/catch_amalgamated.hpp>
+#include <thread>
 #include <vector>
 #include "colorer/HrcLibrary.h"
 #include "colorer/LineSource.h"
 #include "colorer/ParserFactory.h"
 #include "colorer/RegionHandler.h"
 #include "colorer/editor/BaseEditor.h"
+#include "colorer/FileType.h"
 #include "colorer/utils/FileSystems.h"
 #include "colorer/xml/XmlInputSource.h"
 
@@ -277,4 +280,98 @@ TEST_CASE("idleJob warms the parse cache without moving visible line regions", "
   editor.visibleTextEvent(0, 20);
   REQUIRE(hasRegion(editor.getLineRegions(0), "try_line:Kw"));
   editor.removeRegionHandler(&counter);
+}
+
+TEST_CASE("Probe ParserFactory on the same thread does not leak types into master", "[baseeditor]")
+{
+  ParserFactory master;
+  loadTryLine(master);
+
+  {
+    ParserFactory probe;
+    auto cue_path = fs::path(__FILE__).parent_path() / "data" / "type_cue.hrc";
+    UnicodeString cue_location(cue_path.c_str());
+    probe.loadHrcPath(&cue_location);
+
+    REQUIRE(probe.getHrcLibrary().getFileType(UnicodeString("cue")) != nullptr);
+    REQUIRE(probe.getHrcLibrary().getFileType(UnicodeString("try_line")) == nullptr);
+    REQUIRE(master.getHrcLibrary().getFileType(UnicodeString("cue")) == nullptr);
+  }
+
+  REQUIRE(master.getHrcLibrary().getFileType(UnicodeString("try_line")) != nullptr);
+  REQUIRE(master.getHrcLibrary().getFileType(UnicodeString("cue")) == nullptr);
+
+  MutableLines source({UnicodeString(u"int a")});
+  auto editor = makeEditor(master, source);
+  REQUIRE(hasRegion(editor->getLineRegions(0), "try_line:Kw"));
+}
+
+TEST_CASE("two editors parse one HrcLibrary concurrently", "[baseeditor]")
+{
+  ParserFactory factory;
+  loadTryLine(factory);
+
+  MutableLines source_a({UnicodeString(u"int a")});
+  MutableLines source_b({UnicodeString(u"int b")});
+  auto editor_a = makeEditor(factory, source_a);
+  auto editor_b = makeEditor(factory, source_b);
+
+  std::atomic<int> hits {0};
+  auto paint = [&hits](BaseEditor* editor) {
+    for (int i = 0; i < 200; i++) {
+      REQUIRE(hasRegion(editor->getLineRegions(0), "try_line:Kw"));
+      hits++;
+    }
+  };
+
+  std::thread t1([&] { paint(editor_a.get()); });
+  std::thread t2([&] { paint(editor_b.get()); });
+  t1.join();
+  t2.join();
+  REQUIRE(hits == 400);
+}
+
+TEST_CASE("loading another type does not disturb a concurrent parse", "[baseeditor]")
+{
+  ParserFactory factory;
+  loadTryLine(factory);
+
+  MutableLines source({UnicodeString(u"int a")});
+  auto editor = makeEditor(factory, source);
+
+  std::atomic<bool> parsing {true};
+  std::atomic<int> paints {0};
+  std::thread painter([&] {
+    while (parsing.load()) {
+      REQUIRE(hasRegion(editor->getLineRegions(0), "try_line:Kw"));
+      paints++;
+      std::this_thread::yield();
+    }
+  });
+
+  // loadHrcPath of a tiny HRC can finish before the painter is scheduled.
+  while (paints.load() == 0) {
+    std::this_thread::yield();
+  }
+
+  auto block_path = fs::path(__FILE__).parent_path() / "data" / "type_block.hrc";
+  UnicodeString block_location(block_path.c_str());
+  factory.loadHrcPath(&block_location);
+
+  parsing = false;
+  painter.join();
+
+  REQUIRE(paints > 0);
+  REQUIRE(hasRegion(editor->getLineRegions(0), "try_line:Kw"));
+  REQUIRE(factory.getHrcLibrary().getFileType(UnicodeString("bl_quote")) != nullptr);
+  REQUIRE(factory.getHrcLibrary().getFileType(UnicodeString("try_line")) != nullptr);
+}
+
+TEST_CASE("setFileType rejects a null type", "[baseeditor]")
+{
+  ParserFactory factory;
+  MutableLines source({UnicodeString(u"x")});
+  BaseEditor editor(&factory, &source);
+  REQUIRE_THROWS_AS(editor.setFileType(static_cast<FileType*>(nullptr)), FileTypeException);
+  REQUIRE_THROWS_AS(editor.setFileType(UnicodeString("no_such_type")), FileTypeException);
 }
