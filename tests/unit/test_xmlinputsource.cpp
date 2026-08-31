@@ -1,7 +1,11 @@
 #include <catch2/catch_amalgamated.hpp>
 #include "colorer/Common.h"
+#include "colorer/ParserFactory.h"
 #include "colorer/utils/Environment.h"
 #include "colorer/xml/XmlInputSource.h"
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+#include "colorer/xml/libxml2/SharedXmlInputSource.h"
+#endif
 
 TEST_CASE("Test create XmlInputSource")
 {
@@ -193,5 +197,36 @@ TEST_CASE("Create XmlInputSource to zip: zip enabled")
   UnicodeString full_path(u"jar:/home/user/base/hrc/common.zip!base/c.hrc");
   REQUIRE_THROWS_WITH(XmlInputSource(full_path), Catch::Matchers::ContainsSubstring("isn't regular file"));
   REQUIRE_THROWS_WITH(XmlInputSource(u"c-unix.ent.hrc", &full_path), Catch::Matchers::ContainsSubstring("isn't regular file"));
+}
+
+TEST_CASE("XmlJarCache is per factory, not process-global", "[xmlreader]")
+{
+  auto zip = fs::current_path() / "data" / "common-allpacked.zip";
+  UnicodeString path(zip.c_str());
+  REQUIRE(colorer::Environment::isRegularFile(path));
+
+  XmlJarCache master_cache;
+  XmlJarCache probe_cache;
+  SharedXmlInputSource* master_src = nullptr;
+  SharedXmlInputSource* probe_src = nullptr;
+  {
+    XmlJarCache::Current scope(master_cache);
+    master_src = SharedXmlInputSource::getSharedInputSource(path);
+    master_src->open();
+  }
+  {
+    XmlJarCache::Current scope(probe_cache);
+    probe_src = SharedXmlInputSource::getSharedInputSource(path);
+    probe_src->open();
+  }
+  REQUIRE(master_src != probe_src);
+  REQUIRE(master_src->getSize() == probe_src->getSize());
+  REQUIRE(master_src->getSize() > 0);
+
+  ParserFactory master;
+  ParserFactory probe;
+  UnicodeString catalog(u"data/catalog-allpacked.xml");
+  REQUIRE_NOTHROW(master.loadCatalog(&catalog));
+  REQUIRE_NOTHROW(probe.loadCatalog(&catalog));
 }
 #endif

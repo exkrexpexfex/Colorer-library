@@ -8,6 +8,9 @@
 
 ParserFactory::Impl::Impl()
 {
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+  XmlJarCache::Current jar_scope(jar_cache);
+#endif
   hrc_library = new HrcLibrary();
 }
 
@@ -18,6 +21,9 @@ ParserFactory::Impl::~Impl()
 
 void ParserFactory::Impl::loadCatalog(const UnicodeString* catalog_path)
 {
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+  XmlJarCache::Current jar_scope(jar_cache);
+#endif
   if (!catalog_path || catalog_path->isEmpty()) {
     COLORER_LOG_DEBUG("loadCatalog for empty path");
 
@@ -45,6 +51,9 @@ void ParserFactory::Impl::loadCatalog(const UnicodeString* catalog_path)
 
 void ParserFactory::Impl::loadHrcPath(const UnicodeString* location, const UnicodeString* base_path) const
 {
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+  XmlJarCache::Current jar_scope(jar_cache);
+#endif
   if (!location) {
     return;
   }
@@ -80,6 +89,9 @@ void ParserFactory::Impl::loadHrcPath(const UnicodeString* location, const Unico
 
 void ParserFactory::Impl::loadHrcSettings(const UnicodeString* location, const bool user_defined) const
 {
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+  XmlJarCache::Current jar_scope(jar_cache);
+#endif
   uUnicodeString path;
   if (!user_defined && (!location || location->isEmpty())) {
     // hrcsetting уровня приложения загружается по фиксированному пути
@@ -106,6 +118,9 @@ void ParserFactory::Impl::loadHrcSettings(const UnicodeString* location, const b
 
 void ParserFactory::Impl::loadHrdPath(const UnicodeString* location)
 {
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+  XmlJarCache::Current jar_scope(jar_cache);
+#endif
   if (!location) {
     return;
   }
@@ -293,6 +308,9 @@ std::unique_ptr<TextHRDMapper> ParserFactory::Impl::createTextMapper(const Unico
 
 void ParserFactory::Impl::fillMapper(const UnicodeString& classID, const UnicodeString* nameID, RegionMapper& mapper)
 {
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+  XmlJarCache::Current jar_scope(jar_cache);
+#endif
   const UnicodeString* name_id;
   const UnicodeString name_default(HrdNameDefault);
   uUnicodeString hrd;

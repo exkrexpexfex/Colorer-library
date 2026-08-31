@@ -167,9 +167,15 @@ void LibXmlReader::getAttributes(const xmlNode* node, std::unordered_map<Unicode
 xmlParserInputPtr LibXmlReader::xmlZipEntityLoader(const PathInJar& paths, xmlParserCtxtPtr ctxt)
 {
   const auto is = SharedXmlInputSource::getSharedInputSource(paths.path_to_jar);
-  is->open();
-
-  const auto unzipped_stream = unzip(is->getSrc(), is->getSize(), paths.path_in_jar);
+  std::unique_ptr<std::vector<byte>> unzipped_stream;
+  try {
+    is->open();
+    unzipped_stream = unzip(is->getSrc(), is->getSize(), paths.path_in_jar);
+  } catch (...) {
+    is->delref();
+    throw;
+  }
+  is->delref();
 
   xmlParserInputBufferPtr buf =
       xmlParserInputBufferCreateMem(reinterpret_cast<const char*>(unzipped_stream->data()),

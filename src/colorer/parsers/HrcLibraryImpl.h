@@ -8,6 +8,10 @@
 #include "colorer/xml/XMLNode.h"
 #include "colorer/xml/XmlInputSource.h"
 
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+#include "colorer/xml/libxml2/SharedXmlInputSource.h"
+#endif
+
 class FileType;
 
 /** Implementation of HrcLibrary.
@@ -99,6 +103,11 @@ class HrcLibrary::Impl
 
   void updatePrototype(const XMLNode& elem);
   void updatePrototypeParams(const XMLNode& node, FileType* current_parse_prototype);
+
+#ifdef COLORER_FEATURE_ZIPINPUTSOURCE
+  XmlJarCache zip_cache;
+  XmlJarCache* zip_cache_ptr {nullptr};
+#endif
 };
 
 #endif  // COLORER_HRCLIBRARYIMPL_H
