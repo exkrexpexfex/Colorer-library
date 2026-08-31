@@ -280,6 +280,30 @@ TEST_CASE("idleJob warms the parse cache without moving visible line regions", "
   editor.removeRegionHandler(&counter);
 }
 
+TEST_CASE("Probe ParserFactory on the same thread does not leak types into master", "[baseeditor]")
+{
+  ParserFactory master;
+  loadTryLine(master);
+
+  {
+    ParserFactory probe;
+    auto cue_path = fs::path(__FILE__).parent_path() / "data" / "type_cue.hrc";
+    UnicodeString cue_location(cue_path.c_str());
+    probe.loadHrcPath(&cue_location);
+
+    REQUIRE(probe.getHrcLibrary().getFileType(UnicodeString("cue")) != nullptr);
+    REQUIRE(probe.getHrcLibrary().getFileType(UnicodeString("try_line")) == nullptr);
+    REQUIRE(master.getHrcLibrary().getFileType(UnicodeString("cue")) == nullptr);
+  }
+
+  REQUIRE(master.getHrcLibrary().getFileType(UnicodeString("try_line")) != nullptr);
+  REQUIRE(master.getHrcLibrary().getFileType(UnicodeString("cue")) == nullptr);
+
+  MutableLines source({UnicodeString(u"int a")});
+  auto editor = makeEditor(master, source);
+  REQUIRE(hasRegion(editor->getLineRegions(0), "try_line:Kw"));
+}
+
 TEST_CASE("setFileType rejects a null type", "[baseeditor]")
 {
   ParserFactory factory;

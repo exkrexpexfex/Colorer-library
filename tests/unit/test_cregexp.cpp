@@ -741,6 +741,22 @@ TEST_CASE("CRegExp stack reuse after clearRegExpStack", "[cregexp]")
   REQUIRE(match.e[0] == 6);
 }
 
+TEST_CASE("ParserFactory on the same thread does not clear the matcher stack", "[cregexp]")
+{
+  const auto pre = ustr(u"/(a|b)+c/");
+  const auto str = ustr(u"aaabbc");
+  CRegExp re(&pre);
+  REQUIRE(re.isOk());
+  SMatches match;
+  REQUIRE(re.parse(&str, &match));
+  {
+    ParserFactory probe;
+  }
+  REQUIRE(re.parse(&str, &match));
+  REQUIRE(match.s[0] == 0);
+  REQUIRE(match.e[0] == 6);
+}
+
 TEST_CASE("ParserFactory destructor does not wipe a live matcher", "[cregexp]")
 {
   const auto pre = ustr(u"/(a|b)+c/");
