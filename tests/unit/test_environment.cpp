@@ -3,7 +3,7 @@
 #include <catch2/catch_amalgamated.hpp>
 #include <cstdlib>
 
-TEST_CASE("Test normalize base path")
+TEST_CASE("Test normalize base path", "[environment]")
 {
 #ifdef WIN32
   UnicodeString path1(R"(c:\testdir\..\windows\.\win.txt)");
@@ -16,7 +16,7 @@ TEST_CASE("Test normalize base path")
 #endif
 }
 
-TEST_CASE("Test normalize path with variable")
+TEST_CASE("Test normalize path with variable", "[environment]")
 {
 #ifdef WIN32
   _putenv_s("COLORER_TEST_P1", "c:\\testdir");
@@ -30,3 +30,28 @@ TEST_CASE("Test normalize path with variable")
   REQUIRE_THAT(R"(/home/user1/win/win.txt)", Catch::Matchers::Equals(UStr::to_stdstr(norm_path)));
 #endif
 }
+
+TEST_CASE("expandEnvironment leaves paths without $ unchanged", "[environment]")
+{
+  const UnicodeString path("/usr/share/colorer/catalog.xml");
+  REQUIRE(colorer::Environment::expandEnvironment(path) == path);
+  REQUIRE(colorer::Environment::expandSpecialEnvironment(path) == path);
+}
+
+#ifndef WIN32
+TEST_CASE("expandEnvironment substitutes $VAR and ${VAR}", "[environment]")
+{
+  setenv("COLORER_TEST_P2", "/opt/colorer", 1);
+
+  const UnicodeString brace("${COLORER_TEST_P2}/hrc");
+  const auto expanded_brace = colorer::Environment::expandEnvironment(brace);
+  REQUIRE_THAT("/opt/colorer/hrc", Catch::Matchers::Equals(UStr::to_stdstr(&expanded_brace)));
+
+  const UnicodeString dollar("$COLORER_TEST_P2/hrc");
+  const auto expanded_dollar = colorer::Environment::expandEnvironment(dollar);
+  REQUIRE_THAT("/opt/colorer/hrc", Catch::Matchers::Equals(UStr::to_stdstr(&expanded_dollar)));
+  const auto special_dollar = colorer::Environment::expandSpecialEnvironment(dollar);
+  REQUIRE_THAT("/opt/colorer/hrc", Catch::Matchers::Equals(UStr::to_stdstr(&special_dollar)));
+}
+#endif
+
