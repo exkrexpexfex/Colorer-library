@@ -345,8 +345,14 @@ TEST_CASE("loading another type does not disturb a concurrent parse", "[baseedit
     while (parsing.load()) {
       REQUIRE(hasRegion(editor->getLineRegions(0), "try_line:Kw"));
       paints++;
+      std::this_thread::yield();
     }
   });
+
+  // loadHrcPath of a tiny HRC can finish before the painter is scheduled.
+  while (paints.load() == 0) {
+    std::this_thread::yield();
+  }
 
   auto block_path = fs::path(__FILE__).parent_path() / "data" / "type_block.hrc";
   UnicodeString block_location(block_path.c_str());
