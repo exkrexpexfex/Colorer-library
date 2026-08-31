@@ -36,7 +36,7 @@ TEST_CASE("Encodings toUTF8Bytes BMP", "[encodings]")
   }
 }
 
-#ifndef COLORER_FEATURE_ICU
+#if !defined(COLORER_FEATURE_ICU) && (__WCHAR_MAX__ > 0xffff)
 
 TEST_CASE("Encodings toUTF8Bytes supplementary plane", "[encodings]")
 {
@@ -45,8 +45,6 @@ TEST_CASE("Encodings toUTF8Bytes supplementary plane", "[encodings]")
   require_bytes(buf, Encodings::toUTF8Bytes(static_cast<wchar>(0x1F600), buf), {0xF0, 0x9F, 0x98, 0x80});
   require_bytes(buf, Encodings::toUTF8Bytes(static_cast<wchar>(0x10FFFF), buf), {0xF4, 0x8F, 0xBF, 0xBF});
 }
-
-#if (__WCHAR_MAX__ > 0xffff)
 
 TEST_CASE("Encodings toBytes UTF-32", "[encodings]")
 {
@@ -63,8 +61,6 @@ TEST_CASE("Encodings toBytes UTF-32", "[encodings]")
     require_bytes(buf, Encodings::toBytes(Encodings::ENC_UTF32BE, grinning, buf), {0x00, 0x01, 0xF6, 0x00});
   }
 }
-
-#endif
 
 TEST_CASE("UnicodeString getChars UTF-8 for supplementary plane", "[encodings]")
 {

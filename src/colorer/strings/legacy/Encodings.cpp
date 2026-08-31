@@ -105,17 +105,21 @@ int Encodings::toBytes(int encoding, wchar wc, byte* dest)
       dest[1] = static_cast<byte>(0x80 | (wc & 0x3F));
       return 2;
     }
+#if (__WCHAR_MAX__ > 0xffff)
     if (wc <= 0xFFFF) {
+#endif
       dest[0] = static_cast<byte>(0xE0 | (wc >> 12));
       dest[1] = static_cast<byte>(0x80 | ((wc >> 6) & 0x3F));
       dest[2] = static_cast<byte>(0x80 | (wc & 0x3F));
       return 3;
+#if (__WCHAR_MAX__ > 0xffff) // 4-byte UTF-8 is impossible for 16-bit wchar
     }
     dest[0] = static_cast<byte>(0xF0 | (wc >> 18));
     dest[1] = static_cast<byte>(0x80 | ((wc >> 12) & 0x3F));
     dest[2] = static_cast<byte>(0x80 | ((wc >> 6) & 0x3F));
     dest[3] = static_cast<byte>(0x80 | (wc & 0x3F));
     return 4;
+#endif
   }
   if (encoding == ENC_UTF16) {
     dest[0] = wc & 0xFF;
