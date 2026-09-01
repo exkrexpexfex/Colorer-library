@@ -15,6 +15,8 @@ C++ syntax-highlighting library. Languages are described in **HRC** (XML): proto
 
 `ParserFactory` loads `catalog.xml` → `HrcLibrary` (HRC) + HRD nodes. `TextParser` colors a `LineSource` into a `RegionHandler`. `BaseEditor` is the editor-facing API (`modifyLineEvent`, `idleJob`, `breakParse`). `CRegExp` (`src/colorer/cregexp/`) is Colorer’s regexp engine, not `std::regex`. XML goes through libxml2 (`src/colorer/xml/libxml2/`, `XmlReader`, `XmlInputSource`). `jar:` URIs require `COLORER_USE_ZIPINPUTSOURCE`.
 
+HRC type load is **recursive**: `qualifyForeignName` and `<import>` call `loadFileType` while the parent’s `XMLNode` tree is still live. Do not collect imports, drop the parent tree, and reparse. Do not switch `LibXmlReader` to SAX: HRC splices other files through DTD `SYSTEM` entities; SAX dropped those children. Parse with a libxml DOM, copy into `XMLNode`, free the `xmlDoc` immediately. Do not preload types by scanning regexp/keyword text for `prefix:` QNames.
+
 Several `ParserFactory` instances can exist in one process. Do not add process-global mutable parse, XML-load, or zip-cache state.
 
 `idleJob` / `breakParse` are documented as usable from a background thread; the matcher is not internally synchronized.

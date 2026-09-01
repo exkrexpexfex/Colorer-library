@@ -8,6 +8,21 @@ Agent spec for this library. Engine is `CRegExp` (`src/colorer/cregexp/`), not `
 
 URI on `location/@link`: relative to the parent resource, or absolute. Missing scheme → `file://`. `jar:archive!path` needs `COLORER_USE_ZIPINPUTSOURCE`. Packed catalogs rewrite HRC `link` to `jar:…`.
 
+## XML load (this library)
+
+`LibXmlReader` uses libxml `xmlCtxtReadFile` (DOM, `XML_PARSE_NOENT | XML_PARSE_NONET`), copies the tree into `XMLNode`, then **frees the `xmlDoc`**. `parseHRC` / catalog / HRD walk `XMLNode` only.
+
+**Do not switch this path to SAX** (or parse HRC directly from `xmlNode*` without a C++ tree, if that skips entity expansion). Many HRC files splice extra elements through DTD general `SYSTEM` entities, for example `xpath.hrc` (`&xpath-internal-hack;`, `&xpath-xml;`), `far.hrc`, `perl.hrc`. libxml inserts those children into the DOM; SAX building `XMLNode` did not, so schemes were missing and `./tests/schemes/run.sh load` failed. Catch2 fixture: `tests/unit/data/type_entity_incl.hrc` + `type_entity_frag.hrc`. Catalog `env:` / `jar:` entities stay on the existing `xmlMyExternalEntityLoader`.
+
+Type bodies load **recursively**. `qualifyForeignName` (`type:name`) and `<import type="…">` call `loadFileType` while the **parent `XMLNode` is still on the stack**. That is required:
+
+- `type_loading` is set in `addType`, before `parseTypeBlock`. Nested loads of specializations such as `inherit scheme="svg-css:css"` from type `css` need the parent already `type_loading` with regions defined. Preloading the extension first resolves `css:PropertyName` as a missing name.
+- Cycles (css ↔ svg-css, html-css, …) rely on `input_source_loading` / `type_loading` early-return in `loadFileType`, same as today.
+
+Do **not** collect import/QName names, destroy the parent tree, load deps, and reparse the parent. Do **not** scan regexp/`match`/`word/@name` text for `prefix:` to guess types to load — catalog type names collide with C++ `foo:` fragments and pull in extra languages.
+
+Do not add process-global XML-load or zip-cache state. XML or zip/`jar:` InputSource changes must run `./tests/schemes/run.sh load` **and** `load packed`.
+
 ## File shape
 
 ```xml
