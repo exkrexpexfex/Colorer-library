@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hrc [
+  <!ENTITY frag SYSTEM "type_entity_frag.hrc">
+]>
+<hrc>
+  <prototype name="entinc" group="test" description="external entity include">
+    <filename>/\.entinc$/</filename>
+  </prototype>
+  <type name="entinc">
+    <region name="Kw"/>
+    &frag;
+  </type>
+</hrc>

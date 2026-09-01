@@ -18,6 +18,41 @@ TEST_CASE("Test read simple xml", "[xmlreader]")
   REQUIRE(logger->message_print() == false);
 }
 
+TEST_CASE("Parse captures element text and attributes", "[xmlreader]")
+{
+  logger->clean_messages();
+
+  UnicodeString path1(u"data/type_cue.hrc");
+  XmlInputSource is(path1);
+  XmlReader reader(is);
+  REQUIRE(reader.parse());
+
+  XMLNodeList nodes;
+  reader.getNodes(nodes);
+  REQUIRE_FALSE(nodes.empty());
+  REQUIRE(nodes.front().name == UnicodeString(u"hrc"));
+
+  const XMLNode* proto = nullptr;
+  for (const auto& child : nodes.front().children) {
+    if (child.name == UnicodeString(u"prototype")) {
+      proto = &child;
+      break;
+    }
+  }
+  REQUIRE(proto != nullptr);
+  REQUIRE(proto->getAttrValue(UnicodeString(u"name")) == UnicodeString(u"cue"));
+
+  bool found_filename = false;
+  for (const auto& child : proto->children) {
+    if (child.name == UnicodeString(u"filename")) {
+      found_filename = true;
+      REQUIRE(child.text.indexOf(UnicodeString(u"cue")) != -1);
+    }
+  }
+  REQUIRE(found_filename);
+  REQUIRE(logger->message_print() == false);
+}
+
 TEST_CASE("Test read catalog.xml", "[xmlreader]")
 {
   logger->clean_messages();

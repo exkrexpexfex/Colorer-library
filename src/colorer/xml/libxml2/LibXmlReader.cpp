@@ -3,8 +3,8 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
-#include <utility>
 #include <fstream>
+#include <utility>
 #include "colorer/Exception.h"
 #include "colorer/base/BaseNames.h"
 #include "colorer/utils/Environment.h"
@@ -76,34 +76,36 @@ LibXmlReader::LibXmlReader(const UnicodeString& source_file)
   ctxt->_private = &load;
   const XmlLoadCurrent current(&load);
 
-  xmldoc = xmlCtxtReadFile(ctxt, UStr::to_stdstr(&source_file).c_str(), nullptr, XML_PARSE_NOENT | XML_PARSE_NONET);
+  xmlDocPtr xmldoc =
+      xmlCtxtReadFile(ctxt, UStr::to_stdstr(&source_file).c_str(), nullptr, XML_PARSE_NOENT | XML_PARSE_NONET);
+  parsed = xmldoc != nullptr;
+  if (xmldoc != nullptr) {
+    xmlNode* current_node = xmlDocGetRootElement(xmldoc);
+    size_t count = 0;
+    for (xmlNode* node = current_node; node != nullptr; node = node->next) {
+      ++count;
+    }
+    nodes.reserve(count);
+    while (current_node != nullptr) {
+      XMLNode result;
+      populateNode(current_node, result);
+      nodes.push_back(std::move(result));
+      current_node = current_node->next;
+    }
+    xmlFreeDoc(xmldoc);
+    ctxt->myDoc = nullptr;
+  }
   ctxt->_private = nullptr;
   xmlFreeParserCtxt(ctxt);
 }
 
 LibXmlReader::LibXmlReader(const XmlInputSource& source) : LibXmlReader(source.getPath()) {}
 
-LibXmlReader::~LibXmlReader()
-{
-  if (xmldoc != nullptr) {
-    xmlFreeDoc(xmldoc);
-  }
-}
+LibXmlReader::~LibXmlReader() = default;
 
-void LibXmlReader::parse(XMLNodeList& nodes)
+void LibXmlReader::parse(XMLNodeList& out_nodes)
 {
-  xmlNode* current = xmlDocGetRootElement(xmldoc);
-  size_t count = 0;
-  for (xmlNode* node = current; node != nullptr; node = node->next) {
-    ++count;
-  }
-  nodes.reserve(count);
-  while (current != nullptr) {
-    XMLNode result;
-    populateNode(current, result);
-    nodes.push_back(std::move(result));
-    current = current->next;
-  }
+  out_nodes = std::move(nodes);
 }
 
 bool LibXmlReader::populateNode(xmlNode* node, XMLNode& result)
