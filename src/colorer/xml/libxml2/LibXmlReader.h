@@ -3,7 +3,6 @@
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include <list>
 #include "colorer/xml/XMLNode.h"
 #include "colorer/xml/XmlInputSource.h"
 
@@ -14,7 +13,7 @@ class LibXmlReader
 
   ~LibXmlReader();
 
-  void parse(std::list<XMLNode>& nodes);
+  void parse(XMLNodeList& nodes);
 
   [[nodiscard]]
   bool isParsed() const

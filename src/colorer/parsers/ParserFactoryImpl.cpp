@@ -172,7 +172,7 @@ void ParserFactory::Impl::loadHrd(const UnicodeString& hrd_path)
     throw ParserFactoryException(UnicodeString("Error reading ").append(hrd_path));
   }
 
-  std::list<XMLNode> nodes;
+  XMLNodeList nodes;
   xml_parser.getNodes(nodes);
 
   auto elem = nodes.begin();
@@ -203,7 +203,7 @@ void ParserFactory::Impl::loadHrdSets(const UnicodeString& hrd_path)
     throw ParserFactoryException(UnicodeString("Error reading ").append(hrd_path));
   }
 
-  std::list<XMLNode> nodes;
+  XMLNodeList nodes;
   xml_parser.getNodes(nodes);
 
   if (nodes.begin()->name != catTagHrdSets) {

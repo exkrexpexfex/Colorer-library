@@ -3,6 +3,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
+#include <utility>
 #include <fstream>
 #include "colorer/Exception.h"
 #include "colorer/base/BaseNames.h"
@@ -89,13 +90,18 @@ LibXmlReader::~LibXmlReader()
   }
 }
 
-void LibXmlReader::parse(std::list<XMLNode>& nodes)
+void LibXmlReader::parse(XMLNodeList& nodes)
 {
   xmlNode* current = xmlDocGetRootElement(xmldoc);
+  size_t count = 0;
+  for (xmlNode* node = current; node != nullptr; node = node->next) {
+    ++count;
+  }
+  nodes.reserve(count);
   while (current != nullptr) {
     XMLNode result;
     populateNode(current, result);
-    nodes.push_back(result);
+    nodes.push_back(std::move(result));
     current = current->next;
   }
 }
@@ -140,16 +146,23 @@ void LibXmlReader::getChildren(xmlNode* node, XMLNode& result)
   if (node->children == nullptr) {
     return;
   }
-  node = node->children;
 
-  while (node != nullptr) {
-    if (!xmlIsBlankNode(node)) {
-      XMLNode child;
-      if (populateNode(node, child)) {
-        result.children.push_back(child);
-      }
+  size_t count = 0;
+  for (const xmlNode* child = node->children; child != nullptr; child = child->next) {
+    if (child->type == XML_ELEMENT_NODE) {
+      ++count;
     }
-    node = node->next;
+  }
+  result.children.reserve(count);
+
+  for (xmlNode* child = node->children; child != nullptr; child = child->next) {
+    if (child->type != XML_ELEMENT_NODE) {
+      continue;
+    }
+    XMLNode xml_child;
+    if (populateNode(child, xml_child)) {
+      result.children.push_back(std::move(xml_child));
+    }
   }
 }
 

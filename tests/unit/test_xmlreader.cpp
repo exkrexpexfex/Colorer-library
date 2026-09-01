@@ -28,6 +28,12 @@ TEST_CASE("Test read catalog.xml", "[xmlreader]")
   REQUIRE_NOTHROW(test_reader = std::make_unique<XmlReader>(is));
   REQUIRE_NOTHROW(test_reader->parse() == true);
 
+  XMLNodeList nodes;
+  test_reader->getNodes(nodes);
+  REQUIRE_FALSE(nodes.empty());
+  REQUIRE(nodes.front().name == UnicodeString(u"catalog"));
+  REQUIRE_FALSE(nodes.front().children.empty());
+
   REQUIRE(logger->message_print() == false);
 }
 
@@ -88,7 +94,7 @@ TEST_CASE("Sequential XML parses on one thread keep independent entity bases", "
     XmlInputSource is(p);
     XmlReader reader(is);
     REQUIRE(reader.parse());
-    std::list<XMLNode> nodes;
+    XMLNodeList nodes;
     reader.getNodes(nodes);
     REQUIRE_FALSE(nodes.empty());
     REQUIRE(nodes.begin()->name == UnicodeString(u"catalog"));
@@ -118,7 +124,7 @@ TEST_CASE("Overlapping XML parses keep independent entity bases", "[xmlreader]")
         failures++;
         return;
       }
-      std::list<XMLNode> nodes;
+      XMLNodeList nodes;
       reader.getNodes(nodes);
       if (nodes.empty() || nodes.begin()->name != UnicodeString(u"catalog")) {
         failures++;
