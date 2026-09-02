@@ -118,3 +118,28 @@ TEST_CASE("UStr createCharClass ignore_case", "[ustr]")
     REQUIRE(cls->contains(u'Z'));
   }
 }
+
+TEST_CASE("Character classifiers on ASCII and beyond", "[ustr]")
+{
+  REQUIRE(Character::isDigit(u'0'));
+  REQUIRE(Character::isDigit(u'9'));
+  REQUIRE_FALSE(Character::isDigit(u'a'));
+  REQUIRE(Character::isLetter(u'A'));
+  REQUIRE(Character::isLetter(u'z'));
+  REQUIRE_FALSE(Character::isLetter(u'1'));
+  REQUIRE(Character::isLetterOrDigitOrUnderscore(u'_'));
+  REQUIRE(Character::isLowerCase(u'a'));
+  REQUIRE_FALSE(Character::isLowerCase(u'A'));
+  REQUIRE(Character::isUpperCase(u'Z'));
+  REQUIRE(Character::toLowerCase(u'Z') == u'z');
+  REQUIRE(Character::toUpperCase(u'a') == u'A');
+  REQUIRE(Character::toLowerCase(u'0') == u'0');
+  REQUIRE(Character::isWhitespace(u' '));
+  REQUIRE(Character::isWhitespace(u'\t'));
+#ifdef COLORER_FEATURE_ICU
+  REQUIRE(Character::isWhitespace(0x0B));
+#endif
+  REQUIRE_FALSE(Character::isWhitespace(u'x'));
+  REQUIRE(Character::isDigit(0x0661));
+  REQUIRE(Character::isLetter(0x00E9));
+}
