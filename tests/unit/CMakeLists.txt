@@ -16,6 +16,7 @@ set(unit_tests_SRC
     test_textparser.cpp
     test_lineregions.cpp
     test_baseeditor.cpp
+    test_textlinesstore.cpp
     test_common.h
     TestLogger.h
     ${CMAKE_SOURCE_DIR}/external/catch2/catch_amalgamated.cpp

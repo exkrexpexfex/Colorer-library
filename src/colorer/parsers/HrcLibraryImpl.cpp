@@ -135,7 +135,7 @@ void HrcLibrary::Impl::loadHrcSettings(const XmlInputSource& is)
   if (!xml_parser.parse()) {
     throw HrcLibraryException("Error reading " + is.getPath());
   }
-  std::list<XMLNode> nodes;
+  XMLNodeList nodes;
   xml_parser.getNodes(nodes);
 
   if (nodes.begin()->name != u"hrc-settings") {
@@ -227,7 +227,7 @@ void HrcLibrary::Impl::parseHRC(const XmlInputSource& is)
   if (!xml.parse()) {
     throw HrcLibraryException("Error reading hrc file '" + is.getPath() + "'");
   }
-  std::list<XMLNode> nodes;
+  XMLNodeList nodes;
   xml.getNodes(nodes);
 
   if (nodes.begin()->name != hrcTagHrc) {

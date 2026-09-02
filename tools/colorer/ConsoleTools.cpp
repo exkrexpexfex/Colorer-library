@@ -92,7 +92,7 @@ void ConsoleTools::setLinkSource(const UnicodeString& str)
   if (!reader.parse()) {
     throw Exception("Error loading HRD file");
   }
-  std::list<XMLNode> nodes;
+  XMLNodeList nodes;
   reader.getNodes(nodes);
 
   if (nodes.begin()->name != kTagDoclinks) {
