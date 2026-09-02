@@ -292,6 +292,62 @@ TEST_CASE("Inherit virtual substitution still maps schemes", "[textparser]")
   }
 }
 
+TEST_CASE("Inherited keyword lists flatten and merge without changing matches", "[textparser]")
+{
+  auto hrc_path = fs::path(__FILE__).parent_path() / "data" / "type_kwmerge.hrc";
+  XmlInputSource input(UnicodeString(hrc_path.c_str()));
+  HrcLibrary lib;
+  lib.loadSource(&input);
+
+  SECTION("two-level inherit still finds the inner keyword")
+  {
+    const auto hits = parseLine(lib, UnicodeString("kw_nested"), UnicodeString(u"foo x"));
+    REQUIRE(hits.size() == 1);
+    REQUIRE(hits[0].start == 0);
+    REQUIRE(hits[0].end == 3);
+    REQUIRE(hits[0].name.compare(UnicodeString("kw_nested:Inner")) == 0);
+  }
+
+  SECTION("the first inherited list wins a duplicate word")
+  {
+    const auto hits = parseLine(lib, UnicodeString("kw_join"), UnicodeString(u"echo"));
+    REQUIRE(hits.size() == 1);
+    REQUIRE(hits[0].start == 0);
+    REQUIRE(hits[0].end == 4);
+    REQUIRE(hits[0].name.compare(UnicodeString("kw_join:First")) == 0);
+  }
+
+  SECTION("a longer word from a later list still matches")
+  {
+    const auto hits = parseLine(lib, UnicodeString("kw_join"), UnicodeString(u"echolong aa bb"));
+    REQUIRE(hits.size() == 3);
+    REQUIRE(hits[0].name.compare(UnicodeString("kw_join:Second")) == 0);
+    REQUIRE(hits[0].start == 0);
+    REQUIRE(hits[0].end == 8);
+    REQUIRE(hits[1].name.compare(UnicodeString("kw_join:First")) == 0);
+    REQUIRE(hits[1].start == 9);
+    REQUIRE(hits[1].end == 11);
+    REQUIRE(hits[2].name.compare(UnicodeString("kw_join:Second")) == 0);
+    REQUIRE(hits[2].start == 12);
+    REQUIRE(hits[2].end == 14);
+  }
+
+  SECTION("a regexp between keyword lists is not skipped")
+  {
+    const auto hits = parseLine(lib, UnicodeString("kw_split"), UnicodeString(u"hello ho hi"));
+    REQUIRE(hits.size() == 3);
+    REQUIRE(hits[0].name.compare(UnicodeString("kw_split:Re")) == 0);
+    REQUIRE(hits[0].start == 0);
+    REQUIRE(hits[0].end == 5);
+    REQUIRE(hits[1].name.compare(UnicodeString("kw_split:Kw2")) == 0);
+    REQUIRE(hits[1].start == 6);
+    REQUIRE(hits[1].end == 8);
+    REQUIRE(hits[2].name.compare(UnicodeString("kw_split:Kw")) == 0);
+    REQUIRE(hits[2].start == 9);
+    REQUIRE(hits[2].end == 11);
+  }
+}
+
 TEST_CASE("tryParseLine accepts content edits and rejects block-boundary edits", "[textparser]")
 {
   auto hrc_path = fs::path(__FILE__).parent_path() / "data" / "type_tryline.hrc";
