@@ -121,6 +121,7 @@ if(COLORER_USE_ICU_STRINGS)
       colorer/strings/icu/strings.h
       colorer/strings/icu/Character.cpp
       colorer/strings/icu/Character.h
+      colorer/strings/icu/CharacterClass.h
       colorer/strings/icu/Encodings.cpp
       colorer/strings/icu/Encodings.h
       colorer/strings/icu/UnicodeStringContainer.h
