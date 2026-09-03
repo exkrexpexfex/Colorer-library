@@ -1106,7 +1106,7 @@ void HrcLibrary::Impl::buildSearchNodes(SchemeImpl* scheme,
                                         std::unordered_map<const SchemeImpl*, uint8_t>& state)
 {
   auto& st = state[scheme];
-  if (st == kSearchDone || st == kSearchBuilding) {
+  if (st != kSearchUnbuilt) {
     return;
   }
   st = kSearchBuilding;
