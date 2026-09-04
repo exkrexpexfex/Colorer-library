@@ -305,10 +305,12 @@ class CRegExp
   static void collectAsciiChars(const UnicodeString& str, AsciiCharMask& mask);
   /**
    * Cheap pre-check of what parse() would reject before running the matcher:
-   * a start anchor (^ or ~) at another position, or a mandatory literal missing
-   * from @c subjectChars. False means parse() cannot succeed there.
+   * a start anchor (^ or ~) at another position, an end-anchored pattern whose
+   * bounded length cannot reach @c eol, or a mandatory literal missing from
+   * @c subjectChars. False means parse() cannot succeed there.
+   * @c eol is the same bound parse() would receive ($ is toParse == eol).
    */
-  bool mayMatch(int pos, int soscheme, const AsciiCharMask& subjectChars) const
+  bool mayMatch(int pos, int eol, int soscheme, const AsciiCharMask& subjectChars) const
   {
     if (startAnchor == StartAnchor::LineStart && pos != 0)
       return false;
@@ -318,6 +320,10 @@ class CRegExp
 #else
     (void) soscheme;
 #endif
+    // Moving searches skip forward to eol - maxLen in parseRE; only a
+    // fixed-position attempt is impossible when too much text remains.
+    if (endAnchor && maxLen >= 0 && !positionMoves && eol - pos > maxLen)
+      return false;
     for (int i = 0; i < requiredCharsCount; i++) {
       if (((requiredChars[i][0] & subjectChars[0]) | (requiredChars[i][1] & subjectChars[1])) == 0)
         return false;
@@ -346,6 +352,11 @@ class CRegExp
   // Pattern begins with ^ (single-line) or ~: only one start position can match.
   enum class StartAnchor : uint8_t { None, LineStart, SchemeStart };
   StartAnchor startAnchor = StartAnchor::None;
+  // Pattern ends with $ (single-line, no top-level alternation): match can
+  // only finish at eol, so it cannot start more than maxLen before eol.
+  bool endAnchor = false;
+  // Maximum characters the tree can consume; -1 = unbounded (* / + / \N / \y).
+  int maxLen = -1;
   // Every match must contain at least one character from each of these sets.
   static constexpr int MAX_REQUIRED_SETS = 4;
   std::array<AsciiCharMask, MAX_REQUIRED_SETS> requiredChars = {};
@@ -386,6 +397,10 @@ class CRegExp
   std::vector<AsciiCharMask> requiredCharsForNode(const SRegInfo* re) const;
   void addRequiredChar(std::vector<AsciiCharMask>& out, wchar ch) const;
   void analyzeStartAnchor();
+  void analyzeEndAnchor();
+  int maxLenOfNode(const SRegInfo* re) const;
+  int maxLenOfChain(const SRegInfo* re) const;
+  void analyzeMaxLen();
   void analyzeRequiredChars();
   void optimize();
   bool quickCheck(int toParse);

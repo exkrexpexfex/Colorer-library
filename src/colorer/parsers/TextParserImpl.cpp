@@ -334,9 +334,9 @@ int TextParser::Impl::searchIN(SchemeNodeInherit* node, int no, int lowLen, int 
 int TextParser::Impl::searchRE(SchemeNodeRegexp* node, int /*no*/, int lowLen, int hiLen)
 {
   SMatches match;
-  if (!node->start->mayMatch(gx, schemeStart, str_chars) ||
-      !node->start->parse(str, gx, node->lowPriority ? lowLen : hiLen, &match, schemeStart, -1,
-                          &str_chars))
+  const int eol = node->lowPriority ? lowLen : hiLen;
+  if (!node->start->mayMatch(gx, eol, schemeStart, str_chars) ||
+      !node->start->parse(str, gx, eol, &match, schemeStart, -1, &str_chars))
   {
     return MATCH_NOTHING;
   }
@@ -368,9 +368,9 @@ int TextParser::Impl::searchBL(SchemeNodeBlock* node, int no, int lowLen, int hi
 
   // проверяем совпадение по регулярному выражению start
   SMatches match;
-  if (!node->start->mayMatch(gx, schemeStart, str_chars) ||
-      !node->start->parse(str, gx, node->lowPriority ? lowLen : hiLen, &match, schemeStart, -1,
-                          &str_chars))
+  const int eol = node->lowPriority ? lowLen : hiLen;
+  if (!node->start->mayMatch(gx, eol, schemeStart, str_chars) ||
+      !node->start->parse(str, gx, eol, &match, schemeStart, -1, &str_chars))
   {
     return MATCH_NOTHING;
   }
@@ -605,7 +605,7 @@ bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority, b
 
     // searches for the end of parent block
     int res = 0;
-    if (root_end_re && root_end_re->mayMatch(gx, schemeStart, str_chars)) {
+    if (root_end_re && root_end_re->mayMatch(gx, len, schemeStart, str_chars)) {
       res = root_end_re->parse(str, gx, len, &matchend, schemeStart, -1, &str_chars);
     }
     if (!res) {

@@ -769,6 +769,105 @@ TEST_CASE("CRegExp start anchor rejects other positions", "[cregexp]")
   }
 }
 
+TEST_CASE("CRegExp end anchor rejects positions that cannot reach $", "[cregexp]")
+{
+  SECTION("$ in other positions is rejected")
+  {
+    require_match(u"/abc$/", u"xxabc", 2, 5, false, 2);
+    require_no_match(u"/abc$/", u"xxabc", false, 0);
+    require_match(u"/[^\\\\\"]$/", u"hello", 4, 5, false, 4);
+    require_no_match(u"/[^\\\\\"]$/", u"hello", false, 0);
+    require_match(u"/(abc)$/", u"xabc", 1, 4, false, 1);
+    require_no_match(u"/(abc)$/", u"xabc", false, 0);
+  }
+
+  SECTION("/m is not end-anchored")
+  {
+    // With /m, $ also matches after a line break, not only at eol.
+    require_match(u"/$/m", u"a\nb", 2, 2, true, 0);
+    require_match(u"/$/m", u"a\nb", 2, 2, false, 2);
+  }
+
+  SECTION(".*$ is unbounded and is not filtered")
+  {
+    require_match(u"/.*$/", u"abcd", 0, 4, true, 0);
+    require_match(u"/a.*$/", u"a___", 0, 4, true, 0);
+  }
+
+  SECTION("positionMoves starts at end - maxLen")
+  {
+    require_match(u"/abc$/", u"xxabc", 2, 5, true, 0);
+    require_match(u"/x$/", u"abcx", 3, 4, true, 0);
+    require_match(u"/[^\\\\\"]$/", u"hello", 4, 5, true, 0);
+  }
+
+  SECTION("\\y1$ is unbounded and is not filtered")
+  {
+    const auto start_re = ustr(u"/(abc)/");
+    const auto text = ustr(u"xxabc");
+    CRegExp start(&start_re);
+    REQUIRE(start.isOk());
+    SMatches start_match;
+    REQUIRE(start.parse(&text, 2, text.length(), &start_match));
+
+    const auto end_re = ustr(u"/\\y1$/");
+    CRegExp end;
+    end.setBackTrace(&text, &start_match);
+    REQUIRE(end.setRE(&end_re));
+    SMatches end_match;
+    REQUIRE(end.parse(&text, 0, text.length(), &end_match, 0, 1));
+    REQUIRE(end_match.s[0] == 2);
+    REQUIRE(end_match.e[0] == 5);
+  }
+
+  SECTION("eol is the $ bound, not the string length")
+  {
+    const auto pre = ustr(u"/a$/");
+    const auto str = ustr(u"xaZ");
+    CRegExp re(&pre);
+    REQUIRE(re.isOk());
+    SMatches match;
+    AsciiCharMask chars;
+    CRegExp::collectAsciiChars(str, chars);
+    REQUIRE_FALSE(re.mayMatch(0, 2, 0, chars));
+    REQUIRE(re.mayMatch(1, 2, 0, chars));
+    REQUIRE_FALSE(re.parse(&str, 0, 2, &match));
+    REQUIRE(re.parse(&str, 1, 2, &match));
+    REQUIRE(match.s[0] == 1);
+    REQUIRE(match.e[0] == 2);
+    REQUIRE_FALSE(re.parse(&str, 1, 3, &match));
+  }
+
+  SECTION("(^|[^\\\\]?#1)$ matches only at eol")
+  {
+    const auto pre = ustr(u"/(^|[^\\\\]?#1)$/");
+    const auto str = ustr(u"abc");
+    CRegExp re(&pre);
+    REQUIRE(re.isOk());
+    SMatches match;
+    AsciiCharMask chars;
+    CRegExp::collectAsciiChars(str, chars);
+    REQUIRE(re.mayMatch(3, 3, 0, chars));
+    REQUIRE_FALSE(re.mayMatch(0, 3, 0, chars));
+    REQUIRE(parse_re(re, str, match, false, 3));
+    REQUIRE(match.s[0] == 3);
+    REQUIRE(match.e[0] == 3);
+    REQUIRE_FALSE(parse_re(re, str, match, false, 0));
+    REQUIRE(parse_re(re, str, match, true, 0));
+    REQUIRE(match.s[0] == 3);
+    REQUIRE(match.e[0] == 3);
+
+    const auto escaped = ustr(u"ab\\");
+    REQUIRE_FALSE(parse_re(re, escaped, match, false, 3));
+    require_match(u"/(^|[^\\\\]?#1)$/", u"", 0, 0);
+  }
+
+  SECTION("top-level alternation is not end-anchored")
+  {
+    require_match(u"/abc$|xyz/", u"..xyz", 2, 5, false, 2);
+  }
+}
+
 TEST_CASE("CRegExp required characters prefilter", "[cregexp]")
 {
   auto parse_with_line = [](const char16_t* pattern, const char16_t* text, int pos = 0) {

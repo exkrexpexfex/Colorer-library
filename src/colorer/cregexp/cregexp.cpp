@@ -1,5 +1,6 @@
 #include "colorer/cregexp/cregexp.h"
 #include <algorithm>
+#include <climits>
 
 thread_local std::vector<StackElem> CRegExp::RegExpStack;
 
@@ -69,6 +70,8 @@ void CRegExp::init()
   firstCharMask = {};
   firstCharMaskUseful = false;
   startAnchor = StartAnchor::None;
+  endAnchor = false;
+  maxLen = -1;
   requiredChars = {};
   requiredCharsCount = 0;
   cMatch = 0;
@@ -120,6 +123,8 @@ EError CRegExp::setRELow(const UnicodeString& expr)
   firstCharMask = {};
   firstCharMaskUseful = false;
   startAnchor = StartAnchor::None;
+  endAnchor = false;
+  maxLen = -1;
   requiredChars = {};
   requiredCharsCount = 0;
   for (int bp = 0; bp < cnMatch; bp++) delete brnames[bp];
@@ -220,6 +225,8 @@ void CRegExp::optimize()
     (firstCharMask[0] != ~uint64_t(0) || firstCharMask[1] != ~uint64_t(0));
 
   analyzeStartAnchor();
+  analyzeEndAnchor();
+  analyzeMaxLen();
   analyzeRequiredChars();
 }
 
@@ -243,6 +250,151 @@ void CRegExp::analyzeStartAnchor()
     startAnchor = StartAnchor::SchemeStart;
   }
 #endif
+}
+
+void CRegExp::analyzeEndAnchor()
+{
+  endAnchor = false;
+  if (multiLine) {
+    return;
+  }
+  // Last node of the top chain, descending through trailing brackets. A
+  // top-level alternation means some branch may finish before eol.
+  const SRegInfo* node = tree_root;
+  while (node) {
+    if (node->op == EOps::ReOr) {
+      return;
+    }
+    if (node->next) {
+      node = node->next;
+      continue;
+    }
+    if (node->op == EOps::ReBrackets || node->op == EOps::ReNamedBrackets) {
+      node = node->un.param;
+      continue;
+    }
+    break;
+  }
+  if (node && node->op == EOps::ReMetaSymb && node->un.metaSymbol == EMetaSymbols::ReEoL) {
+    endAnchor = true;
+  }
+}
+
+static int addBounded(int a, int b)
+{
+  if (a < 0 || b < 0) {
+    return -1;
+  }
+  if (a > INT_MAX - b) {
+    return -1;
+  }
+  return a + b;
+}
+
+int CRegExp::maxLenOfNode(const SRegInfo* re) const
+{
+  if (!re) {
+    return 0;
+  }
+  switch (re->op) {
+    case EOps::ReSymb:
+    case EOps::ReEnum:
+      return 1;
+    case EOps::ReWord:
+      return re->un.word != nullptr ? re->un.word->length() : 0;
+    case EOps::ReMetaSymb:
+      switch (re->un.metaSymbol) {
+        case EMetaSymbols::ReAnyChr:
+        case EMetaSymbols::ReDigit:
+        case EMetaSymbols::ReNDigit:
+        case EMetaSymbols::ReWordSymb:
+        case EMetaSymbols::ReNWordSymb:
+        case EMetaSymbols::ReWSpace:
+        case EMetaSymbols::ReNWSpace:
+        case EMetaSymbols::ReUCase:
+        case EMetaSymbols::ReNUCase:
+          return 1;
+        case EMetaSymbols::ReSoL:
+        case EMetaSymbols::ReEoL:
+        case EMetaSymbols::ReWBound:
+        case EMetaSymbols::ReNWBound:
+        case EMetaSymbols::RePreNW:
+#ifdef COLORERMODE
+        case EMetaSymbols::ReSoScheme:
+        case EMetaSymbols::ReStart:
+        case EMetaSymbols::ReEnd:
+#endif
+          return 0;
+        default:
+          return -1;
+      }
+    case EOps::ReBrackets:
+    case EOps::ReNamedBrackets:
+      return maxLenOfChain(re->un.param);
+    case EOps::ReRangeN:
+    case EOps::ReNGRangeN:
+      return -1;
+    case EOps::ReRangeNM:
+    case EOps::ReNGRangeNM: {
+      if (re->e < 0) {
+        return -1;
+      }
+      const int inner = maxLenOfChain(re->un.param);
+      if (inner < 0) {
+        return -1;
+      }
+      if (re->e != 0 && inner > INT_MAX / re->e) {
+        return -1;
+      }
+      return re->e * inner;
+    }
+    case EOps::ReAhead:
+    case EOps::ReNAhead:
+    case EOps::ReBehind:
+    case EOps::ReNBehind:
+    case EOps::ReEmpty:
+      return 0;
+#ifdef COLORERMODE
+    case EOps::ReBkTrace:
+    case EOps::ReBkTraceN:
+    case EOps::ReBkTraceName:
+    case EOps::ReBkTraceNName:
+#endif
+    case EOps::ReBkBrack:
+    case EOps::ReBkBrackName:
+    case EOps::ReOr:
+    default:
+      return -1;
+  }
+}
+
+int CRegExp::maxLenOfChain(const SRegInfo* re) const
+{
+  int total = 0;
+  for (const auto* node = re; node; node = node->next) {
+    if (node->op == EOps::ReOr) {
+      const int left = maxLenOfChain(node->un.param);
+      const int right = maxLenOfChain(node->next);
+      if (left < 0 || right < 0) {
+        return -1;
+      }
+      return addBounded(total, left > right ? left : right);
+    }
+    const int n = maxLenOfNode(node);
+    if (n < 0) {
+      return -1;
+    }
+    total = addBounded(total, n);
+    if (total < 0) {
+      return -1;
+    }
+  }
+  return total;
+}
+
+void CRegExp::analyzeMaxLen()
+{
+  maxLen = maxLenOfChain(tree_root);
 }
 
 static int popcountMask(const AsciiCharMask& mask)
@@ -1682,6 +1834,18 @@ inline bool CRegExp::parseRE(int pos, const AsciiCharMask* subjectChars)
   if (startAnchor == StartAnchor::SchemeStart && toParse != schemeStart)
     return false;
 #endif
+
+  if (endAnchor && maxLen >= 0) {
+    // A moving search can skip forward; ^ / ~ still pin the only start.
+    if (positionMoves && startAnchor == StartAnchor::None) {
+      const int start = end - maxLen;
+      if (start > toParse) {
+        toParse = pos = start;
+      }
+    }
+    if (end - toParse > maxLen)
+      return false;
+  }
 
   if (!positionMoves && firstCharMaskUseful) {
     if (toParse >= end) return false;
