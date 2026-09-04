@@ -1026,21 +1026,20 @@ std::unique_ptr<SchemeNodeKeywords> mergeKeywordNodes(const std::vector<const Sc
   }
   auto merged = std::make_unique<SchemeNodeKeywords>();
   merged->kwList = std::make_unique<KeywordList>(total);
-  merged->kwList->matchCase = src.front()->kwList->matchCase;
+  auto* kw = merged->kwList.get();
+  kw->matchCase = src.front()->kwList->matchCase;
   for (const auto* node : src) {
     const auto* list = node->kwList.get();
     for (int i = 0; i < list->count; i++) {
-      auto& dst = merged->kwList->kwList[merged->kwList->count];
+      auto& dst = kw->kwList[kw->count];
       dst.keyword = std::make_unique<UnicodeString>(*list->kwList[i].keyword);
       dst.region = list->kwList[i].region;
       dst.isSymbol = list->kwList[i].isSymbol;
-      merged->kwList->firstChar->add((*dst.keyword)[0]);
-      merged->kwList->minKeywordLength =
-          std::min(merged->kwList->minKeywordLength, dst.keyword->length());
-      merged->kwList->count++;
+      kw->firstChar->add((*dst.keyword)[0]);
+      kw->minKeywordLength = std::min(kw->minKeywordLength, dst.keyword->length());
+      kw->count++;
     }
   }
-  auto* kw = merged->kwList.get();
   std::stable_sort(kw->kwList, kw->kwList + kw->count, [](const KeywordInfo& a, const KeywordInfo& b) {
     const int cmp = a.keyword->compare(*b.keyword);
     if (cmp != 0) {
