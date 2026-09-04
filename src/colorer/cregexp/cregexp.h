@@ -421,15 +421,155 @@ class CRegExp
   int parseSteps = 0;
   int parseStepLimit = 1000000;
   bool stepBudgetExceeded = false;
-  void check_stack(bool res, SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter,
-                   ReAction* action);
-  void insert_stack(SRegInfo** re, SRegInfo** prev, int* toParse, bool* leftenter, ReAction ifTrueReturn,
-                    ReAction ifFalseReturn, SRegInfo** re2, SRegInfo** prev2, int toParse2);
+  void growRegExpStack();
+  void check_stack(bool res, SRegInfo*& re, SRegInfo*& prev, int& toParse, bool& leftenter, ReAction& action);
+  void insert_stack(SRegInfo*& re, SRegInfo*& prev, int& toParse, bool& leftenter, ReAction ifTrueReturn,
+                    ReAction ifFalseReturn, SRegInfo* re2, SRegInfo* prev2, int toParse2);
 
   static thread_local std::vector<StackElem> RegExpStack;
+
+  static bool isLineBreak(wchar c)
+  {
+    return c == 0x0A || c == 0x0B || c == 0x0C || c == 0x0D || c == 0x85 || c == 0x2028 || c == 0x2029;
+  }
 
  public:
   static void clearRegExpStack();
 };
+
+inline bool CRegExp::isWordBoundary(int toParse)
+{
+  const bool after = (toParse < end && Character::isLetterOrDigitOrUnderscore(parseBuf[toParse]));
+  const bool before = (toParse > 0 && Character::isLetterOrDigitOrUnderscore(parseBuf[toParse - 1]));
+  return before != after;
+}
+
+inline bool CRegExp::checkMetaSymbol(EMetaSymbols symb, int& toParse)
+{
+  switch (symb) {
+    case EMetaSymbols::ReAnyChr:
+      if (toParse >= end || (!singleLine && isLineBreak(parseBuf[toParse])))
+        return false;
+      toParse++;
+      return true;
+
+    case EMetaSymbols::ReSoL:
+      return toParse == 0 || (multiLine && isLineBreak(parseBuf[toParse - 1]));
+
+    case EMetaSymbols::ReEoL:
+      return toParse == end || (multiLine && toParse && toParse < end && isLineBreak(parseBuf[toParse - 1]));
+
+    case EMetaSymbols::ReDigit:
+      if (toParse >= end || !Character::isDigit(parseBuf[toParse]))
+        return false;
+      toParse++;
+      return true;
+
+    case EMetaSymbols::ReNDigit:
+      if (toParse >= end || Character::isDigit(parseBuf[toParse]))
+        return false;
+      toParse++;
+      return true;
+
+    case EMetaSymbols::ReWordSymb:
+      if (toParse >= end || !Character::isLetterOrDigitOrUnderscore(parseBuf[toParse]))
+        return false;
+      toParse++;
+      return true;
+
+    case EMetaSymbols::ReNWordSymb:
+      if (toParse >= end || Character::isLetterOrDigitOrUnderscore(parseBuf[toParse]))
+        return false;
+      toParse++;
+      return true;
+
+    case EMetaSymbols::ReWSpace:
+      if (toParse >= end || !Character::isWhitespace(parseBuf[toParse]))
+        return false;
+      toParse++;
+      return true;
+
+    case EMetaSymbols::ReNWSpace:
+      if (toParse >= end || Character::isWhitespace(parseBuf[toParse]))
+        return false;
+      toParse++;
+      return true;
+
+    case EMetaSymbols::ReUCase:
+      if (toParse >= end || !Character::isUpperCase(parseBuf[toParse]))
+        return false;
+      toParse++;
+      return true;
+
+    case EMetaSymbols::ReNUCase:
+      if (toParse >= end || !Character::isLowerCase(parseBuf[toParse]))
+        return false;
+      toParse++;
+      return true;
+
+    case EMetaSymbols::ReWBound:
+      return isWordBoundary(toParse);
+
+    case EMetaSymbols::ReNWBound:
+      return !isWordBoundary(toParse);
+
+    case EMetaSymbols::RePreNW:
+      return toParse == 0 || toParse >= end || !Character::isLetter(parseBuf[toParse - 1]);
+
+#ifdef COLORERMODE
+    case EMetaSymbols::ReSoScheme:
+      return (schemeStart == toParse);
+
+    case EMetaSymbols::ReStart:
+      matches->s[0] = toParse;
+      startChange = true;
+      return true;
+
+    case EMetaSymbols::ReEnd:
+      matches->e[0] = toParse;
+      endChange = true;
+      return true;
+#endif
+
+    default:
+      return false;
+  }
+}
+
+inline void CRegExp::check_stack(bool res, SRegInfo*& re, SRegInfo*& prev, int& toParse, bool& leftenter,
+                                 ReAction& action)
+{
+  if (count_elem == 0) {
+    action = res ? rea_True : rea_False;
+    return;
+  }
+
+  const StackElem& ne = RegExpStack[--count_elem];
+  action = res ? ne.ifTrueReturn : ne.ifFalseReturn;
+  re = ne.re;
+  prev = ne.prev;
+  toParse = ne.toParse;
+  leftenter = ne.leftenter;
+}
+
+inline void CRegExp::insert_stack(SRegInfo*& re, SRegInfo*& prev, int& toParse, bool& leftenter,
+                                  ReAction ifTrueReturn, ReAction ifFalseReturn, SRegInfo* re2, SRegInfo* prev2,
+                                  int toParse2)
+{
+  if (RegExpStack.size() == static_cast<size_t>(count_elem)) {
+    growRegExpStack();
+  }
+  RegExpStack[static_cast<size_t>(count_elem++)] =
+      StackElem{re, prev, toParse, leftenter, ifTrueReturn, ifFalseReturn};
+
+  prev = prev2;
+  re = re2;
+  toParse = toParse2;
+  leftenter = true;
+  if (!re) {
+    re = prev->parent;
+    leftenter = false;
+  }
+}
 
 #endif  // COLORER_CREGEXP_H
