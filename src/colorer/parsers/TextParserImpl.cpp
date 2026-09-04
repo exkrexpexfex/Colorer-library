@@ -486,7 +486,7 @@ int TextParser::Impl::searchBL(SchemeNodeBlock* node, int no, int lowLen, int hi
       forward = ResF;
       parent = ResP;
     }
-    else {
+    else if (OldCacheF != nullptr) {
       OldCacheF->eline = current_parse_line;
       OldCacheF->vcache = vtlist.store();
       forward = OldCacheF;
@@ -522,18 +522,20 @@ int TextParser::Impl::searchMatch(const SchemeImpl* cscheme, int no, int lowLen,
 #endif
   size_t searchBegin = 0;
   size_t searchEnd = cscheme->searchNodes.size();
-  bool useDispatch = false;
-  if (cscheme->searchDispatch && gx < str->length()) {
+  const auto* dispatch = cscheme->searchDispatch.get();
+  if (dispatch != nullptr && gx < str->length()) {
     const auto ch = static_cast<uint32_t>((*str)[gx]);
     if (ch < 128) {
-      searchBegin = cscheme->searchDispatch->offsets[ch];
-      searchEnd = cscheme->searchDispatch->offsets[ch + 1];
-      useDispatch = true;
+      searchBegin = dispatch->offsets[ch];
+      searchEnd = dispatch->offsets[ch + 1];
+    } else {
+      dispatch = nullptr;
     }
+  } else {
+    dispatch = nullptr;
   }
   for (size_t i = searchBegin; i < searchEnd; i++) {
-    auto* schemeNode = cscheme->searchNodes[
-      useDispatch ? cscheme->searchDispatch->nodeIndexes[i] : i];
+    auto* schemeNode = cscheme->searchNodes[dispatch ? dispatch->nodeIndexes[i] : i];
     COLORER_LOG_DEEPTRACE("[TextParserImpl] searchMatch: processing node:%/%, type:%", idx + 1,
                          searchEnd - searchBegin,
                          SchemeNode::schemeNodeTypeNames[static_cast<int>(schemeNode->type)]);
@@ -599,7 +601,6 @@ bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority, b
       if (str == nullptr) {
         // LineSource can return null if the line is not available (e.g. editor shutdown).
         // Stop parsing gracefully instead of throwing across threads.
-        str = nullptr;
         clearLine = -1;
         endLine = current_parse_line;
         stackLevel--;

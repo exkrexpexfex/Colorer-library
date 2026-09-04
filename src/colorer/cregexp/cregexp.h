@@ -596,7 +596,7 @@ inline void CRegExp::insert_stack(SRegInfo*& re, SRegInfo*& prev, int& toParse, 
   re = re2;
   toParse = toParse2;
   leftenter = true;
-  if (!re) {
+  if (!re && prev != nullptr) {
     re = prev->parent;
     leftenter = false;
   }

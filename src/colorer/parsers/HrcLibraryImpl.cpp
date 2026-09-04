@@ -616,7 +616,10 @@ void HrcLibrary::Impl::addSchemeInherit(SchemeImpl* scheme, const XMLNode& elem)
   scheme_node->schemeName = std::make_unique<UnicodeString>(nqSchemeName);
   auto schemeName = qualifyForeignName(scheme_node->schemeName.get(), QualifyNameType::QNT_SCHEME, false);
   if (schemeName != nullptr) {
-    scheme_node->scheme = schemeHash.find(*schemeName)->second;
+    const auto scheme_it = schemeHash.find(*schemeName);
+    if (scheme_it != schemeHash.end()) {
+      scheme_node->scheme = scheme_it->second;
+    }
     scheme_node->schemeName = std::move(schemeName);
   }
 
@@ -994,9 +997,12 @@ void HrcLibrary::Impl::updateSchemeLink(uUnicodeString& scheme_name, SchemeImpl*
   if (scheme_name != nullptr && *scheme_impl == nullptr) {
     const auto schemeName = qualifyForeignName(scheme_name.get(), QualifyNameType::QNT_SCHEME, true);
     if (schemeName != nullptr) {
-      *scheme_impl = schemeHash.find(*schemeName)->second;
+      const auto scheme_it = schemeHash.find(*schemeName);
+      if (scheme_it != schemeHash.end()) {
+        *scheme_impl = scheme_it->second;
+      }
     }
-    else {
+    if (*scheme_impl == nullptr) {
       COLORER_LOG_ERROR(message[scheme_type], *scheme_name, *current_scheme->schemeName);
     }
 
@@ -1020,21 +1026,20 @@ std::unique_ptr<SchemeNodeKeywords> mergeKeywordNodes(const std::vector<const Sc
   }
   auto merged = std::make_unique<SchemeNodeKeywords>();
   merged->kwList = std::make_unique<KeywordList>(total);
-  merged->kwList->matchCase = src.front()->kwList->matchCase;
+  auto* kw = merged->kwList.get();
+  kw->matchCase = src.front()->kwList->matchCase;
   for (const auto* node : src) {
     const auto* list = node->kwList.get();
     for (int i = 0; i < list->count; i++) {
-      auto& dst = merged->kwList->kwList[merged->kwList->count];
+      auto& dst = kw->kwList[kw->count];
       dst.keyword = std::make_unique<UnicodeString>(*list->kwList[i].keyword);
       dst.region = list->kwList[i].region;
       dst.isSymbol = list->kwList[i].isSymbol;
-      merged->kwList->firstChar->add((*dst.keyword)[0]);
-      merged->kwList->minKeywordLength =
-          std::min(merged->kwList->minKeywordLength, dst.keyword->length());
-      merged->kwList->count++;
+      kw->firstChar->add((*dst.keyword)[0]);
+      kw->minKeywordLength = std::min(kw->minKeywordLength, dst.keyword->length());
+      kw->count++;
     }
   }
-  auto* kw = merged->kwList.get();
   std::stable_sort(kw->kwList, kw->kwList + kw->count, [](const KeywordInfo& a, const KeywordInfo& b) {
     const int cmp = a.keyword->compare(*b.keyword);
     if (cmp != 0) {
@@ -1341,7 +1346,11 @@ uUnicodeString HrcLibrary::Impl::qualifyForeignName(const UnicodeString* name, c
       if (idx > -1) {
         tname = current_parse_type->pimpl->importVector.at(idx);
       }
-      FileType* importer = fileTypeHash.find(tname)->second;
+      const auto importer_it = fileTypeHash.find(tname);
+      if (importer_it == fileTypeHash.end()) {
+        continue;
+      }
+      FileType* importer = importer_it->second;
       if (!importer->pimpl->type_loading) {
         loadFileType(importer);
       }
@@ -1390,7 +1399,10 @@ uUnicodeString HrcLibrary::Impl::useEntities(const UnicodeString* name)
     auto qEnName = qualifyForeignName(&enname, QualifyNameType::QNT_ENTITY, true);
     const UnicodeString* enval = nullptr;
     if (qEnName != nullptr) {
-      enval = schemeEntitiesHash.find(*qEnName)->second;
+      const auto entity_it = schemeEntitiesHash.find(*qEnName);
+      if (entity_it != schemeEntitiesHash.end()) {
+        enval = entity_it->second;
+      }
     }
     if (enval == nullptr) {
       epos++;

@@ -40,8 +40,12 @@ SharedXmlInputSource* XmlJarCache::get(const UnicodeString& path)
   }
 
   auto sis = std::unique_ptr<SharedXmlInputSource>(new SharedXmlInputSource(path));
-  auto* raw = sis.get();
-  entries.emplace(path, std::move(sis));
+  auto* const raw = sis.get();
+  const auto [it, inserted] = entries.try_emplace(path, std::move(sis));
+  if (!inserted) {
+    it->second->addref();
+    return it->second.get();
+  }
   return raw;
 }
 
