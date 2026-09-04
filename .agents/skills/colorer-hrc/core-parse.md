@@ -179,4 +179,4 @@ Pair search walks `LineRegion` lists looking for `def:PairStart` / `def:PairEnd`
 - **Both string backends** (`COLORER_USE_ICU_STRINGS` on/off) for anything that touches `UnicodeString` / `parseBuf`.
 - **No process-global** mutable parse, XML-load, or zip cache. CRegExp stack is per-thread, not per-factory.
 
-Checks: `[cregexp]`, `[textparser]`, `[baseeditor]` on ICU and legacy; `./tests/schemes/run.sh parse --quick` then full `parse` (0 changed). XML/zip changes also need `load` and `load packed`.
+Checks: `[cregexp]`, `[textparser]`, `[baseeditor]` on ICU and legacy; `./tests/schemes/run.sh parse --quick` then full `parse` (0 changed). XML/zip changes also need `load` and `load packed`. Large-file timing: `tests/performance/samples/` via `perftest -t5`.

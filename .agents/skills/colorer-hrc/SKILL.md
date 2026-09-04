@@ -11,4 +11,4 @@ Runtime coloring hot path (`CRegExp` filters, `TextParser` scheme search, `BaseE
 
 XML load constraints (no SAX, recursive `loadFileType` on import/QName) are in [hrc-ref.md](hrc-ref.md#xml-load-this-library).
 
-Not for authoring new language types — that is Colorer-schemes skill `colorer-hrc-authoring`. Human HTML (legacy): https://colorer.sourceforge.net/hrc-ref/
+Not for authoring new language types — that is Colorer-schemes skill `colorer-hrc-authoring` (`speed.md` there for scheme-side cost; the schemes repo may sit next to this one, e.g. `../Colorer-schemes`). Human HTML (legacy): https://colorer.sourceforge.net/hrc-ref/

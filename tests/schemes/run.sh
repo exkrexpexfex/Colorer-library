@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Drive Colorer-schemes load/parse tests against this tree's colorer CLI.
-# Schemes stay in a sibling (or COLORER_SCHEMES_DIR) checkout — they are not vendored here.
+# Schemes stay in a Colorer-schemes checkout (COLORER_SCHEMES_DIR, or
+# ../Colorer-schemes when both repos share a parent) — they are not vendored here.
 set -euo pipefail
 
 LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -21,7 +22,8 @@ Commands:
                        One-file -ht against the chosen catalog.
 
 Environment:
-  COLORER_SCHEMES_DIR  Colorer-schemes checkout (default: ../Colorer-schemes)
+  COLORER_SCHEMES_DIR  Colorer-schemes checkout. If unset, ../Colorer-schemes
+                       is tried (example: both repos cloned under one parent).
   COLORER              colorer CLI (default: out/agent/tools/colorer/colorer)
 
 Never points at out/build/. Packed catalogs need COLORER_USE_ZIPINPUTSOURCE=ON
@@ -45,7 +47,7 @@ find_schemes() {
   elif [ -d "$LIB_ROOT/../Colorer-schemes" ]; then
     dir="$LIB_ROOT/../Colorer-schemes"
   else
-    die "Colorer-schemes not found. Clone it next to this repo or set COLORER_SCHEMES_DIR."
+    die "Colorer-schemes not found. Clone it next to this repo (same parent directory) or set COLORER_SCHEMES_DIR."
   fi
   [ -f "$dir/build.sh" ] && [ -d "$dir/tests" ] || die "not a Colorer-schemes tree: $dir"
   (cd "$dir" && pwd)

@@ -211,7 +211,7 @@ Loaded by `ParserFactory`. Current schemes: `xmlns="http://colorer.github.io/sch
 
 `link` relative to the catalog file, or `jar:common.zip!hrc/proto.hrc`. XML entities in catalog often alias `hrd` paths (including `jar:`).
 
-Colorer-schemes: `build.sh base` → `_build/base/` loose files; `build.sh base.packed` → `_build/base-packed/` zip + `jar:` links. XML/zip loader changes must test packed.
+Colorer-schemes (separate repo; example sibling path `../Colorer-schemes`): `build.sh base` → `_build/base/` loose files; `build.sh base.packed` → `_build/base-packed/` zip + `jar:` links. XML/zip loader changes must test packed.
 
 ## HRD
 

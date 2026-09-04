@@ -5,9 +5,9 @@ description: Run Colorer-schemes catalog load and golden parse tests against a f
 
 # Colorer-schemes tests (library)
 
-External regression for this library. Schemes, goldens, and `ignored_error.txt` live in a **sibling** [Colorer-schemes](https://github.com/colorer/Colorer-schemes) checkout. Do not copy them here. Do not rewrite them as Catch2.
+External regression for this library. Schemes, goldens, and `ignored_error.txt` live in a [Colorer-schemes](https://github.com/colorer/Colorer-schemes) checkout — not in this repo. Do not copy them here. Do not rewrite them as Catch2.
 
-Always go through `tests/schemes/run.sh`. It finds `../Colorer-schemes` (or `$COLORER_SCHEMES_DIR`), links **this** tree's CLI into `Colorer-schemes/bin/colorer`, and builds the catalog. CLI default: `out/agent/tools/colorer/colorer`. Never `out/build/`.
+Always go through `tests/schemes/run.sh`. It looks for Colorer-schemes in `$COLORER_SCHEMES_DIR`, or, if that is unset, in `../Colorer-schemes` (example layout: both repos cloned under the same parent). It links **this** tree's CLI into that checkout's `bin/colorer` and builds the catalog. CLI default: `out/agent/tools/colorer/colorer`. Never `out/build/`.
 
 ## Catalog flavors
 
@@ -40,7 +40,7 @@ Golden parse (`runtest.py`) is hardcoded to unpacked `_build/base`. Packed/allpa
 ./tests/schemes/run.sh html --packed path/to/sample.cpp -t cpp -o /tmp/out.html
 ```
 
-Missing schemes tree: clone next to this repo or set `COLORER_SCHEMES_DIR`. Missing CLI: build `consoletools` into `out/agent/` (see `AGENTS.md`).
+Missing schemes tree: clone Colorer-schemes next to this repo (example: same parent directory) or set `COLORER_SCHEMES_DIR`. Missing CLI: build `consoletools` into `out/agent/` (see `AGENTS.md`).
 
 ## Rules
 
