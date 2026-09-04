@@ -103,7 +103,7 @@ CString::CString(const byte* stream, int32_t size, int def_encoding)
       } else {
         int nextbytes = 0;
         while (stream[pos] << (nextbytes + 1)  & 0x80) nextbytes++;
-        wc = (stream[pos]  &  0xFF >> (nextbytes + 2)) << (nextbytes * 6);
+        wc = (stream[pos] & (0xFF >> (nextbytes + 2))) << (nextbytes * 6);
         while (nextbytes--) {
           wc += (stream[++pos]  &  0x3F) << (nextbytes * 6);
         }

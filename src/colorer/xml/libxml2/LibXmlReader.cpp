@@ -240,7 +240,11 @@ xmlParserInputPtr LibXmlReader::xmlMyExternalEntityLoader(const char* URL, const
     xmlParserInputPtr ret = nullptr;
     try {
       ret = xmlZipEntityLoader(paths, ctxt);
+    } catch (const Exception& e) {
+      // Must not throw through libxml2's C entity-loader callback.
+      COLORER_LOG_ERROR("zip entity load failed: %", e.what());
     } catch (...) {
+      COLORER_LOG_ERROR("zip entity load failed");
     }
     return ret;
   }
