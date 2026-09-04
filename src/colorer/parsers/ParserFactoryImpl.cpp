@@ -245,8 +245,11 @@ std::vector<UnicodeString> ParserFactory::Impl::enumHrdClasses() const
 
 std::vector<const HrdNode*> ParserFactory::Impl::enumHrdInstances(const UnicodeString& classID) const
 {
-  auto hash = hrd_nodes.find(classID);
   std::vector<const HrdNode*> result;
+  const auto hash = hrd_nodes.find(classID);
+  if (hash == hrd_nodes.end()) {
+    return result;
+  }
   result.reserve(hash->second->size());
   for (const auto& p : *hash->second) {
     result.push_back(p.get());
