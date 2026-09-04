@@ -486,7 +486,7 @@ int TextParser::Impl::searchBL(SchemeNodeBlock* node, int no, int lowLen, int hi
       forward = ResF;
       parent = ResP;
     }
-    else {
+    else if (OldCacheF != nullptr) {
       OldCacheF->eline = current_parse_line;
       OldCacheF->vcache = vtlist.store();
       forward = OldCacheF;
