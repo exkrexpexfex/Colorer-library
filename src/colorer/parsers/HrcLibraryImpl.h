@@ -2,6 +2,7 @@
 #define COLORER_HRCLIBRARYIMPL_H
 
 #include <shared_mutex>
+#include <cstdint>
 #include <unordered_map>
 #include "colorer/HrcLibrary.h"
 #include "colorer/cregexp/cregexp.h"
@@ -96,6 +97,8 @@ class HrcLibrary::Impl
   uUnicodeString qualifyForeignName(const UnicodeString* name, QualifyNameType qntype, bool logErrors);
 
   void updateLinks();
+  void buildSearchNodes(SchemeImpl* scheme, std::unordered_map<const SchemeImpl*, uint8_t>& state);
+  void mergeSearchKeywords(SchemeImpl* scheme);
   void updateSchemeLink(uUnicodeString& scheme_name, SchemeImpl** scheme_impl, byte scheme_type,
                         const SchemeImpl* current_scheme);
   uUnicodeString useEntities(const UnicodeString* name);

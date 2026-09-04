@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hrc>
+  <prototype name="kw_nested" group="test" description="two-level keyword inherit">
+    <filename>/\.kwnest$/</filename>
+  </prototype>
+  <prototype name="kw_join" group="test" description="merged consecutive keyword inherit">
+    <filename>/\.kwjoin$/</filename>
+  </prototype>
+  <prototype name="kw_split" group="test" description="keywords not merged across regexp">
+    <filename>/\.kwsplit$/</filename>
+  </prototype>
+  <type name="kw_nested">
+    <region name="Inner"/>
+    <scheme name="inner">
+      <keywords region="Inner" ignorecase="no">
+        <word name="foo"/>
+      </keywords>
+    </scheme>
+    <scheme name="mid">
+      <inherit scheme="inner"/>
+    </scheme>
+    <scheme name="kw_nested">
+      <inherit scheme="mid"/>
+    </scheme>
+  </type>
+  <type name="kw_join">
+    <region name="First"/>
+    <region name="Second"/>
+    <scheme name="a">
+      <keywords region="First" ignorecase="no">
+        <word name="echo"/>
+        <word name="aa"/>
+      </keywords>
+    </scheme>
+    <scheme name="b">
+      <keywords region="Second" ignorecase="no">
+        <word name="echo"/>
+        <word name="echolong"/>
+        <word name="bb"/>
+      </keywords>
+    </scheme>
+    <scheme name="kw_join">
+      <inherit scheme="a"/>
+      <inherit scheme="b"/>
+    </scheme>
+  </type>
+  <type name="kw_split">
+    <region name="Kw"/>
+    <region name="Re"/>
+    <region name="Kw2"/>
+    <scheme name="kw_split">
+      <keywords region="Kw" ignorecase="no">
+        <word name="hi"/>
+      </keywords>
+      <regexp match="/hello/" region="Re"/>
+      <keywords region="Kw2" ignorecase="no">
+        <word name="ho"/>
+      </keywords>
+    </scheme>
+  </type>
+</hrc>

@@ -322,6 +322,7 @@ class CRegExp
   bool startChange = false;
   bool endChange = false;
   const UnicodeString* global_pattern = nullptr;
+  const wchar* parseBuf = nullptr;
   int end = 0;
 
   SMatches* matches = nullptr;
@@ -350,6 +351,7 @@ class CRegExp
   bool matchCopiedRange(const UnicodeString& src, int from, int to, int& toParse, bool icase) const;
   bool lowParse(SRegInfo* re, SRegInfo* prev, int toParse);
   bool parseRE(int toParse);
+  void bindSubject(const UnicodeString* str);
 
   int count_elem;
   int parseSteps = 0;

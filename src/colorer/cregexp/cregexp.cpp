@@ -69,6 +69,7 @@ void CRegExp::init()
   firstCharMaskUseful = false;
   cMatch = 0;
   global_pattern = nullptr;
+  parseBuf = nullptr;
 #ifdef COLORERMODE
   backRE = nullptr;
   backStr = nullptr;
@@ -815,72 +816,70 @@ static bool isLineBreak(wchar c)
 
 bool CRegExp::isWordBoundary(int toParse)
 {
-  const bool after = (toParse < end && Character::isLetterOrDigitOrUnderscore((*global_pattern)[toParse]));
-  const bool before = (toParse > 0 && Character::isLetterOrDigitOrUnderscore((*global_pattern)[toParse - 1]));
+  const bool after = (toParse < end && Character::isLetterOrDigitOrUnderscore(parseBuf[toParse]));
+  const bool before = (toParse > 0 && Character::isLetterOrDigitOrUnderscore(parseBuf[toParse - 1]));
   return before != after;
 }
 
 bool CRegExp::checkMetaSymbol(EMetaSymbols symb, int& toParse)
 {
-  const UnicodeString& pattern = *global_pattern;
-
   switch (symb) {
     case EMetaSymbols::ReAnyChr:
-      if (toParse >= end || (!singleLine && isLineBreak(pattern[toParse])))
+      if (toParse >= end || (!singleLine && isLineBreak(parseBuf[toParse])))
         return false;
       toParse++;
       return true;
 
     case EMetaSymbols::ReSoL:
-        return toParse == 0 || (multiLine && isLineBreak(pattern[toParse - 1]));
+        return toParse == 0 || (multiLine && isLineBreak(parseBuf[toParse - 1]));
 
     case EMetaSymbols::ReEoL:
-      return toParse == end || (multiLine && toParse && toParse < end && isLineBreak(pattern[toParse - 1]));
+      return toParse == end || (multiLine && toParse && toParse < end && isLineBreak(parseBuf[toParse - 1]));
 
     case EMetaSymbols::ReDigit:
-      if (toParse >= end || !Character::isDigit(pattern[toParse]))
+      if (toParse >= end || !Character::isDigit(parseBuf[toParse]))
         return false;
       toParse++;
       return true;
 
     case EMetaSymbols::ReNDigit:
-      if (toParse >= end || Character::isDigit(pattern[toParse]))
+      if (toParse >= end || Character::isDigit(parseBuf[toParse]))
         return false;
       toParse++;
       return true;
 
     case EMetaSymbols::ReWordSymb:
-      if (toParse >= end || !Character::isLetterOrDigitOrUnderscore(pattern[toParse]))
+      if (toParse >= end || !Character::isLetterOrDigitOrUnderscore(parseBuf[toParse]))
         return false;
       toParse++;
       return true;
 
     case EMetaSymbols::ReNWordSymb:
-      if (toParse >= end || Character::isLetterOrDigitOrUnderscore(pattern[toParse]))
+      if (toParse >= end || Character::isLetterOrDigitOrUnderscore(parseBuf[toParse]))
         return false;
       toParse++;
       return true;
 
     case EMetaSymbols::ReWSpace:
-      if (toParse >= end || !Character::isWhitespace(pattern[toParse]))
+      if (toParse >= end || !Character::isWhitespace(parseBuf[toParse]))
         return false;
       toParse++;
       return true;
 
     case EMetaSymbols::ReNWSpace:
-      if (toParse >= end || Character::isWhitespace(pattern[toParse]))
+      if (toParse >= end || Character::isWhitespace(parseBuf[toParse]))
         return false;
       toParse++;
       return true;
 
     case EMetaSymbols::ReUCase:
-      if (toParse >= end || !Character::isUpperCase(pattern[toParse]))
+      if (toParse >= end || !Character::isUpperCase(parseBuf[toParse]))
         return false;
       toParse++;
       return true;
 
     case EMetaSymbols::ReNUCase:
-      if (toParse >= end || !Character::isLowerCase(pattern[toParse]))
+      if (toParse >= end || !Character::isLowerCase(parseBuf[toParse]))
         return false;
       toParse++;
       return true;
@@ -892,7 +891,7 @@ bool CRegExp::checkMetaSymbol(EMetaSymbols symb, int& toParse)
       return !isWordBoundary(toParse);
 
     case EMetaSymbols::RePreNW:
-      return toParse == 0 || toParse >= end || !Character::isLetter(pattern[toParse - 1]);
+      return toParse == 0 || toParse >= end || !Character::isLetter(parseBuf[toParse - 1]);
 
 #ifdef COLORERMODE
     case EMetaSymbols::ReSoScheme:
@@ -939,15 +938,19 @@ bool CRegExp::matchCopiedRange(const UnicodeString& src, int from, int to, int& 
   // Unmatched groups are stored as -1,-1; the classic copy loop then does nothing.
   if (from < 0 || to < 0)
     return true;
-  const UnicodeString& pattern = *global_pattern;
+  if (from >= to)
+    return true;
+  const wchar* srcBuf = src.getBuffer();
+  if (srcBuf == nullptr)
+    return false;
   for (int i = from; i < to; i++) {
     if (toParse >= end)
       return false;
     if (icase) {
-      if (Character::toLowerCase(pattern[toParse]) != Character::toLowerCase(src[i]))
+      if (Character::toLowerCase(parseBuf[toParse]) != Character::toLowerCase(srcBuf[i]))
         return false;
     }
-    else if (pattern[toParse] != src[i]) {
+    else if (parseBuf[toParse] != srcBuf[i]) {
       return false;
     }
     toParse++;
@@ -988,7 +991,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
   int i, sv, wlen;
   bool leftenter = true;
   bool br = false;
-  const UnicodeString& pattern = *global_pattern;
+  const wchar* const buf = parseBuf;
   ReAction action = rea_None;
 
   if (!re) {
@@ -1036,7 +1039,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
-            if (!matchChars(pattern[toParse], re->un.symbol)) {
+            if (!matchChars(buf[toParse], re->un.symbol)) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
@@ -1055,13 +1058,24 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
               continue;
             }
             if (ignoreCase) {
-              if (UStr::caseCompare(pattern, toParse, wlen, *re->un.word) != 0) {
+              if (UStr::caseCompare(*global_pattern, toParse, wlen, *re->un.word) != 0) {
                 check_stack(false, &re, &prev, &toParse, &leftenter, &action);
                 continue;
               }
             }
             else {
-              if (pattern.compare(toParse, wlen, *re->un.word) != 0) {
+              const wchar* wordBuf = re->un.word->getBuffer();
+              if (wlen != 0 && wordBuf == nullptr) {
+                check_stack(false, &re, &prev, &toParse, &leftenter, &action);
+                continue;
+              }
+              int k = 0;
+              for (; k < wlen; k++) {
+                if (buf[toParse + k] != wordBuf[k]) {
+                  break;
+                }
+              }
+              if (k != wlen) {
                 check_stack(false, &re, &prev, &toParse, &leftenter, &action);
                 continue;
               }
@@ -1073,7 +1087,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
-            if (!re->un.charclass->contains(pattern[toParse])) {
+            if (!re->un.charclass->contains(buf[toParse])) {
               check_stack(false, &re, &prev, &toParse, &leftenter, &action);
               continue;
             }
@@ -1147,7 +1161,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
             }
             br = false;
             for (i = matches->ns[sv]; i < matches->ne[sv]; i++) {
-              if (toParse >= end || pattern[toParse] != pattern[i]) {
+              if (toParse >= end || buf[toParse] != buf[i]) {
                 check_stack(false, &re, &prev, &toParse, &leftenter, &action);
                 br = true;
                 break;
@@ -1171,7 +1185,7 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
             }
             br = false;
             for (i = matches->s[sv]; i < matches->e[sv]; i++) {
-              if (toParse >= end || pattern[toParse] != pattern[i]) {
+              if (toParse >= end || buf[toParse] != buf[i]) {
                 check_stack(false, &re, &prev, &toParse, &leftenter, &action);
                 br = true;
                 break;
@@ -1449,11 +1463,11 @@ inline bool CRegExp::quickCheck(int toParse)
 {
   switch (firstNode->op) {
     case EOps::ReSymb:
-      return toParse < end && matchChars((*global_pattern)[toParse], firstNode->un.symbol);
+      return toParse < end && matchChars(parseBuf[toParse], firstNode->un.symbol);
     case EOps::ReWord:
-      return toParse < end && matchChars((*global_pattern)[toParse], (*firstNode->un.word)[0]);
+      return toParse < end && matchChars(parseBuf[toParse], (*firstNode->un.word)[0]);
     case EOps::ReEnum:
-      return toParse < end && firstNode->un.charclass->contains((*global_pattern)[toParse]);
+      return toParse < end && firstNode->un.charclass->contains(parseBuf[toParse]);
     case EOps::ReMetaSymb:
       switch (firstNode->un.metaSymbol) {
 #ifdef COLORERMODE
@@ -1488,7 +1502,7 @@ inline bool CRegExp::parseRE(int pos)
 
   if (!positionMoves && firstCharMaskUseful) {
     if (toParse >= end) return false;
-    const auto ch = static_cast<uint32_t>((*global_pattern)[toParse]);
+    const auto ch = static_cast<uint32_t>(parseBuf[toParse]);
     if (ch < 128 && !(firstCharMask[ch >> 6] & (uint64_t(1) << (ch & 63)))) return false;
   }
   if (!positionMoves && firstNode && !quickCheck(toParse))
@@ -1505,7 +1519,7 @@ inline bool CRegExp::parseRE(int pos)
           skip = true;
         }
         else {
-          const auto ch = static_cast<uint32_t>((*global_pattern)[toParse]);
+          const auto ch = static_cast<uint32_t>(parseBuf[toParse]);
           if (ch < 128 && !(firstCharMask[ch >> 6] & (uint64_t(1) << (ch & 63))))
             skip = true;
         }
@@ -1536,6 +1550,16 @@ inline bool CRegExp::parseRE(int pos)
   return false;
 }
 
+void CRegExp::bindSubject(const UnicodeString* str)
+{
+  global_pattern = str;
+  parseBuf = str != nullptr ? str->getBuffer() : nullptr;
+  if (parseBuf == nullptr) {
+    static const wchar empty = 0;
+    parseBuf = &empty;
+  }
+}
+
 bool CRegExp::parse(const UnicodeString* str, int pos, int eol, SMatches* mtch, int soScheme,
                     int posMoves)
 {
@@ -1545,7 +1569,7 @@ bool CRegExp::parse(const UnicodeString* str, int pos, int eol, SMatches* mtch, 
 #ifdef COLORERMODE
   schemeStart = soScheme;
 #endif
-  global_pattern = str;
+  bindSubject(str);
   end = eol;
   matches = mtch;
   bool result = parseRE(pos);
@@ -1555,8 +1579,8 @@ bool CRegExp::parse(const UnicodeString* str, int pos, int eol, SMatches* mtch, 
 
 bool CRegExp::parse(const UnicodeString* str, SMatches* mtch)
 {
-  end = str->length();
-  global_pattern = str;
+  bindSubject(str);
+  end = str != nullptr ? str->length() : 0;
 #ifdef COLORERMODE
   schemeStart = 0;
 #endif

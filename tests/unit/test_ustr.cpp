@@ -118,3 +118,90 @@ TEST_CASE("UStr createCharClass ignore_case", "[ustr]")
     REQUIRE(cls->contains(u'Z'));
   }
 }
+
+TEST_CASE("Character classifiers on ASCII and beyond", "[ustr]")
+{
+  REQUIRE(Character::isDigit(u'0'));
+  REQUIRE(Character::isDigit(u'9'));
+  REQUIRE_FALSE(Character::isDigit(u'a'));
+  REQUIRE(Character::isLetter(u'A'));
+  REQUIRE(Character::isLetter(u'z'));
+  REQUIRE_FALSE(Character::isLetter(u'1'));
+  REQUIRE(Character::isLetterOrDigitOrUnderscore(u'_'));
+  REQUIRE(Character::isLowerCase(u'a'));
+  REQUIRE_FALSE(Character::isLowerCase(u'A'));
+  REQUIRE(Character::isUpperCase(u'Z'));
+  REQUIRE(Character::toLowerCase(u'Z') == u'z');
+  REQUIRE(Character::toUpperCase(u'a') == u'A');
+  REQUIRE(Character::toLowerCase(u'0') == u'0');
+  REQUIRE(Character::isWhitespace(u' '));
+  REQUIRE(Character::isWhitespace(u'\t'));
+#ifdef COLORER_FEATURE_ICU
+  REQUIRE(Character::isWhitespace(0x0B));
+#endif
+  REQUIRE_FALSE(Character::isWhitespace(u'x'));
+  REQUIRE(Character::isDigit(0x0661));
+  REQUIRE(Character::isLetter(0x00E9));
+}
+
+#ifdef COLORER_FEATURE_ICU
+TEST_CASE("CharacterClass ASCII mask matches UnicodeSet", "[ustr]")
+{
+  const auto matches_ref = [](const CharacterClass& cls, const icu::UnicodeSet& ref) {
+    for (UChar32 c = 0; c < 128; c++) {
+      REQUIRE(cls.contains(c) == ref.contains(c));
+    }
+  };
+
+  SECTION("range and extra ASCII chars")
+  {
+    int end = -1;
+    const auto cls = UStr::createCharClass(UnicodeString(u"[a-z0-9_]"), 0, &end, false);
+    REQUIRE(cls != nullptr);
+    icu::UnicodeSet ref;
+    ref.add('a', 'z');
+    ref.add('0', '9');
+    ref.add('_');
+    matches_ref(*cls, ref);
+  }
+
+  SECTION("complement")
+  {
+    int end = -1;
+    const auto cls = UStr::createCharClass(UnicodeString(u"[^a]"), 0, &end, false);
+    REQUIRE(cls != nullptr);
+    icu::UnicodeSet ref;
+    ref.add('a');
+    ref.complement();
+    matches_ref(*cls, ref);
+    REQUIRE(cls->contains(0x00E9) == ref.contains(0x00E9));
+  }
+
+  SECTION("digit class includes Nd beyond ASCII")
+  {
+    int end = -1;
+    const auto cls = UStr::createCharClass(UnicodeString(u"[\\d]"), 0, &end, false);
+    REQUIRE(cls != nullptr);
+    UErrorCode ec = U_ZERO_ERROR;
+    const icu::UnicodeSet ref("[:Nd:]", ec);
+    REQUIRE(U_SUCCESS(ec));
+    matches_ref(*cls, ref);
+    REQUIRE(cls->contains(0x0661));
+    REQUIRE_FALSE(cls->contains(u'a'));
+  }
+
+  SECTION("add after construction updates the mask")
+  {
+    CharacterClass cls;
+    cls.add(u'x');
+    REQUIRE(cls.contains(u'x'));
+    REQUIRE_FALSE(cls.contains(u'y'));
+    cls.add(u'y');
+    REQUIRE(cls.contains(u'y'));
+    cls.freeze();
+    REQUIRE(cls.contains(u'x'));
+    REQUIRE(cls.contains(u'y'));
+    REQUIRE_FALSE(cls.contains(u'z'));
+  }
+}
+#endif

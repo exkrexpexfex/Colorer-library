@@ -236,12 +236,23 @@ int TextParser::Impl::searchKW(const SchemeNodeKeywords* node, int /*no*/, int l
     }
   }
 
-  if (gx < lowlen && !node->kwList->firstChar->contains((*use_str)[gx])) {
-    return MATCH_NOTHING;
-  }
-
   int left = 0;
   int right = node->kwList->count;
+  if (gx < lowlen) {
+    const auto ch = static_cast<uint32_t>((*use_str)[gx]);
+    if (ch < 128) {
+      if ((node->kwList->firstCharAscii[ch >> 6] & (uint64_t(1) << (ch & 63))) == 0) {
+        return MATCH_NOTHING;
+      }
+      left = node->kwList->asciiBegin[ch];
+      right = node->kwList->asciiEnd[ch];
+    } else if (!node->kwList->firstChar->contains(static_cast<wchar>(ch))) {
+      return MATCH_NOTHING;
+    }
+  }
+  if (left >= right) {
+    return MATCH_NOTHING;
+  }
   while (true) {
     int pos = left + (right - left) / 2;
     int kwlen = node->kwList->kwList[pos].keyword->length();

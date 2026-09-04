@@ -40,6 +40,7 @@ class SchemeImpl : public Scheme
 
   uUnicodeString schemeName;
   std::vector<std::unique_ptr<SchemeNode>> nodes;
+  std::vector<std::unique_ptr<SchemeNode>> searchOwnedNodes;
   std::vector<SchemeNode*> searchNodes;
   std::unique_ptr<SearchDispatch> searchDispatch;
   FileType* fileType = nullptr;
