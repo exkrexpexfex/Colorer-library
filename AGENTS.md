@@ -9,6 +9,7 @@ C++ syntax-highlighting library. Languages are described in **HRC** (XML): proto
 - `src/colorer/common/Features.h.in` — CMake template. Generated `colorer/common/Features.h` is in the **build** tree (ICU, ZIP, deep trace), not under `src/`.
 - `tools/colorer/` — CLI (`tools/colorer/ConsoleTools.cpp`).
 - `tests/unit/` — Catch2 v3. Fixtures in `tests/unit/data/`.
+- `tests/performance/` — `perftest` harness. Large input files in `tests/performance/samples/`.
 - `.agents/skills/` — portable Agent Skills (`SKILL.md`); same layout as Colorer-schemes. HRC/CRegExp: `colorer-hrc`.
 
 ## Pipeline
@@ -48,9 +49,19 @@ cd tests/unit
 ../../out/agent/tests/unit/unit_tests '[baseeditor]'
 ```
 
-### Schemes catalog (sibling Colorer-schemes)
+### Performance (`perftest`)
 
-Full-catalog load and golden coloring live in [Colorer-schemes](https://github.com/colorer/Colorer-schemes), not in Catch2. Default checkout: `../Colorer-schemes`. Run them with `tests/schemes/run.sh` (links `out/agent/tools/colorer/colorer` into that tree's `bin/`). Agent instructions: `.agents/skills/colorer-schemes-tests/SKILL.md`.
+Harness: `out/agent/tests/perftest`. Corpus: `tests/performance/samples/` (`sqlite3.c`, PHP, Go, JS). Needs a Colorer-schemes catalog (`-b`).
+
+```bash
+./out/agent/tests/perftest -t5 -c5 \
+  -b "$COLORER_SCHEMES_DIR/_build/base/catalog.xml" \
+  -f tests/performance/samples/sqlite3.c
+```
+
+### Schemes catalog (Colorer-schemes)
+
+Full-catalog load and golden coloring live in [Colorer-schemes](https://github.com/colorer/Colorer-schemes), not in Catch2. If this repo and Colorer-schemes are cloned as siblings under one parent (example: `…/src/Colorer-library` next to `…/src/Colorer-schemes`), `tests/schemes/run.sh` finds `../Colorer-schemes`. Otherwise set `COLORER_SCHEMES_DIR`. Run via `tests/schemes/run.sh` (links `out/agent/tools/colorer/colorer` into that tree's `bin/`). Agent instructions: `.agents/skills/colorer-schemes-tests/SKILL.md`.
 
 `build.sh base` writes ordinary HRC/HRD files to `_build/base/`. `build.sh base.packed` writes a zip-packed catalog to `_build/base-packed/` (`jar:` URIs). **XML-load or zip/jar InputSource changes must run `load packed`.** Unpacked `load` does not cover that path. Packed builds need `-DCOLORER_USE_ZIPINPUTSOURCE=ON` and the `zip` tool.
 

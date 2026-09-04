@@ -6,6 +6,8 @@ Agent spec for this library. Engine is `CRegExp` (`src/colorer/cregexp/`), not `
 
 `ParserFactory` loads `catalog.xml` → HRC (`HrcLibrary`) + HRD. File type: sum `<filename>` / `<firstline>` weights; first max wins. Type XML loads lazily when selected. Parse starts at the scheme whose `name` equals the type name (packages need no base scheme). One scheme is active at a time. `TextParser` emits regions + enter/leave scheme to `RegionHandler`.
 
+Coloring hot path (scheme first-char lists, CRegExp skip filters, ParseCache, BaseEditor window/invalidation): [core-parse.md](core-parse.md).
+
 URI on `location/@link`: relative to the parent resource, or absolute. Missing scheme → `file://`. `jar:archive!path` needs `COLORER_USE_ZIPINPUTSOURCE`. Packed catalogs rewrite HRC `link` to `jar:…`.
 
 ## XML load (this library)
@@ -209,7 +211,7 @@ Loaded by `ParserFactory`. Current schemes: `xmlns="http://colorer.github.io/sch
 
 `link` relative to the catalog file, or `jar:common.zip!hrc/proto.hrc`. XML entities in catalog often alias `hrd` paths (including `jar:`).
 
-Colorer-schemes: `build.sh base` → `_build/base/` loose files; `build.sh base.packed` → `_build/base-packed/` zip + `jar:` links. XML/zip loader changes must test packed.
+Colorer-schemes (separate repo; example sibling path `../Colorer-schemes`): `build.sh base` → `_build/base/` loose files; `build.sh base.packed` → `_build/base-packed/` zip + `jar:` links. XML/zip loader changes must test packed.
 
 ## HRD
 
