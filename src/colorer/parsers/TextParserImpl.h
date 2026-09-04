@@ -42,6 +42,8 @@ class TextParser::Impl
   UnicodeString* str = nullptr;
   UnicodeString str_lowercase;
   bool str_lowercase_ready = false;
+  // ASCII characters present in str; lets CRegExp skip patterns that cannot match the line.
+  AsciiCharMask str_chars = {};
   int stackLevel = 0;
   int current_parse_line = 0;
   int gx = 0;

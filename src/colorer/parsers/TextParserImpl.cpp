@@ -334,7 +334,10 @@ int TextParser::Impl::searchIN(SchemeNodeInherit* node, int no, int lowLen, int 
 int TextParser::Impl::searchRE(SchemeNodeRegexp* node, int /*no*/, int lowLen, int hiLen)
 {
   SMatches match;
-  if (!node->start->parse(str, gx, node->lowPriority ? lowLen : hiLen, &match, schemeStart)) {
+  if (!node->start->mayMatch(gx, schemeStart, str_chars) ||
+      !node->start->parse(str, gx, node->lowPriority ? lowLen : hiLen, &match, schemeStart, -1,
+                          &str_chars))
+  {
     return MATCH_NOTHING;
   }
   COLORER_LOG_DEEPTRACE("[TextParserImpl] RE matched. gx=%", gx);
@@ -365,7 +368,10 @@ int TextParser::Impl::searchBL(SchemeNodeBlock* node, int no, int lowLen, int hi
 
   // проверяем совпадение по регулярному выражению start
   SMatches match;
-  if (!node->start->parse(str, gx, node->lowPriority ? lowLen : hiLen, &match, schemeStart)) {
+  if (!node->start->mayMatch(gx, schemeStart, str_chars) ||
+      !node->start->parse(str, gx, node->lowPriority ? lowLen : hiLen, &match, schemeStart, -1,
+                          &str_chars))
+  {
     return MATCH_NOTHING;
   }
 
@@ -582,6 +588,7 @@ bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority, b
         return true;
       }
       str_lowercase_ready = false;
+      CRegExp::collectAsciiChars(*str, str_chars);
       regionHandler->clearLine(current_parse_line, str);
     }
     // hack to include invisible regions in start of block
@@ -598,8 +605,8 @@ bool TextParser::Impl::colorize(CRegExp* root_end_re, bool lowContentPriority, b
 
     // searches for the end of parent block
     int res = 0;
-    if (root_end_re) {
-      res = root_end_re->parse(str, gx, len, &matchend, schemeStart);
+    if (root_end_re && root_end_re->mayMatch(gx, schemeStart, str_chars)) {
+      res = root_end_re->parse(str, gx, len, &matchend, schemeStart, -1, &str_chars);
     }
     if (!res) {
       matchend.s[0] = matchend.e[0] = gx + maxBlockSize > len ? len : gx + maxBlockSize;

@@ -168,6 +168,9 @@ struct StackElem
 
 #define INIT_MEM_SIZE 512
 #define MEM_INC 128
+
+/// Bit per ASCII code point (0..127). Used for the first-char and required-char prefilters.
+using AsciiCharMask = std::array<uint64_t, 2>;
 /** Regular Expression compiler and matcher.
     Colorer regular expressions library cregexp.
 
@@ -288,11 +291,39 @@ class CRegExp
   /** Runs RE parser against input string @c str
    */
   bool parse(const UnicodeString* str, SMatches* mtch);
-  /** Runs RE parser against input string @c str
+  /** Runs RE parser against input string @c str.
+   *  @param subjectChars optional mask of ASCII characters present anywhere in @c str
+   *         (not only in [pos, eol)). Lets the matcher reject patterns whose
+   *         mandatory literals are absent from the line without running the NFA.
    */
   bool parse(const UnicodeString* str, int pos, int eol, SMatches* mtch, int soscheme = 0,
-             int moves = -1);
+             int moves = -1, const AsciiCharMask* subjectChars = nullptr);
   bool canStartWith(wchar ch) const;
+  /**
+   * Fills @c mask with every ASCII character of @c str; use as @c subjectChars in parse().
+   */
+  static void collectAsciiChars(const UnicodeString& str, AsciiCharMask& mask);
+  /**
+   * Cheap pre-check of what parse() would reject before running the matcher:
+   * a start anchor (^ or ~) at another position, or a mandatory literal missing
+   * from @c subjectChars. False means parse() cannot succeed there.
+   */
+  bool mayMatch(int pos, int soscheme, const AsciiCharMask& subjectChars) const
+  {
+    if (startAnchor == StartAnchor::LineStart && pos != 0)
+      return false;
+#ifdef COLORERMODE
+    if (startAnchor == StartAnchor::SchemeStart && pos != soscheme)
+      return false;
+#else
+    (void) soscheme;
+#endif
+    for (int i = 0; i < requiredCharsCount; i++) {
+      if (((requiredChars[i][0] & subjectChars[0]) | (requiredChars[i][1] & subjectChars[1])) == 0)
+        return false;
+    }
+    return true;
+  }
   /**
    * Caps backtracking steps in one parse() call. When exceeded, the match
    * fails (it is not a wall-clock quantum). Default 1 000 000.
@@ -310,8 +341,15 @@ class CRegExp
   SRegInfo* tree_root = nullptr;
   EError error = EError::EOK;
   SRegInfo* firstNode = nullptr;
-  std::array<uint64_t, 2> firstCharMask = {};
+  AsciiCharMask firstCharMask = {};
   bool firstCharMaskUseful = false;
+  // Pattern begins with ^ (single-line) or ~: only one start position can match.
+  enum class StartAnchor : uint8_t { None, LineStart, SchemeStart };
+  StartAnchor startAnchor = StartAnchor::None;
+  // Every match must contain at least one character from each of these sets.
+  static constexpr int MAX_REQUIRED_SETS = 4;
+  std::array<AsciiCharMask, MAX_REQUIRED_SETS> requiredChars = {};
+  int requiredCharsCount = 0;
 #ifdef COLORERMODE
   CRegExp* backRE = nullptr;
   const UnicodeString* backStr = nullptr;
@@ -338,19 +376,24 @@ class CRegExp
   bool matchChars(wchar one, wchar another) const;
   struct FirstChars
   {
-    std::array<uint64_t, 2> mask = {};
+    AsciiCharMask mask = {};
     bool nullable = false;
   };
   FirstChars analyzeFirstChars(const SRegInfo* re) const;
   FirstChars firstCharsForNode(const SRegInfo* re) const;
   void addFirstChar(FirstChars& result, wchar ch) const;
+  std::vector<AsciiCharMask> requiredCharsForChain(const SRegInfo* re) const;
+  std::vector<AsciiCharMask> requiredCharsForNode(const SRegInfo* re) const;
+  void addRequiredChar(std::vector<AsciiCharMask>& out, wchar ch) const;
+  void analyzeStartAnchor();
+  void analyzeRequiredChars();
   void optimize();
   bool quickCheck(int toParse);
   bool isWordBoundary(int toParse);
   bool checkMetaSymbol(EMetaSymbols metaSymbol, int& toParse);
   bool matchCopiedRange(const UnicodeString& src, int from, int to, int& toParse, bool icase) const;
   bool lowParse(SRegInfo* re, SRegInfo* prev, int toParse);
-  bool parseRE(int toParse);
+  bool parseRE(int toParse, const AsciiCharMask* subjectChars);
   void bindSubject(const UnicodeString* str);
 
   int count_elem;

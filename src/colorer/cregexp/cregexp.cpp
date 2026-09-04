@@ -1,4 +1,5 @@
 #include "colorer/cregexp/cregexp.h"
+#include <algorithm>
 
 thread_local std::vector<StackElem> CRegExp::RegExpStack;
 
@@ -67,6 +68,9 @@ void CRegExp::init()
   firstNode = nullptr;
   firstCharMask = {};
   firstCharMaskUseful = false;
+  startAnchor = StartAnchor::None;
+  requiredChars = {};
+  requiredCharsCount = 0;
   cMatch = 0;
   global_pattern = nullptr;
   parseBuf = nullptr;
@@ -115,6 +119,9 @@ EError CRegExp::setRELow(const UnicodeString& expr)
   firstNode = nullptr;
   firstCharMask = {};
   firstCharMaskUseful = false;
+  startAnchor = StartAnchor::None;
+  requiredChars = {};
+  requiredCharsCount = 0;
   for (int bp = 0; bp < cnMatch; bp++) delete brnames[bp];
 
   cMatch = 0;
@@ -211,6 +218,166 @@ void CRegExp::optimize()
   firstCharMask = firstChars.mask;
   firstCharMaskUseful = !firstChars.nullable &&
     (firstCharMask[0] != ~uint64_t(0) || firstCharMask[1] != ~uint64_t(0));
+
+  analyzeStartAnchor();
+  analyzeRequiredChars();
+}
+
+void CRegExp::analyzeStartAnchor()
+{
+  startAnchor = StartAnchor::None;
+  // Descend through leading brackets only; an alternation or quantifier at the
+  // front means other branches may start elsewhere.
+  const SRegInfo* node = tree_root;
+  while (node && (node->op == EOps::ReBrackets || node->op == EOps::ReNamedBrackets)) {
+    node = node->un.param;
+  }
+  if (!node || node->op != EOps::ReMetaSymb) {
+    return;
+  }
+  if (node->un.metaSymbol == EMetaSymbols::ReSoL && !multiLine) {
+    startAnchor = StartAnchor::LineStart;
+  }
+#ifdef COLORERMODE
+  else if (node->un.metaSymbol == EMetaSymbols::ReSoScheme) {
+    startAnchor = StartAnchor::SchemeStart;
+  }
+#endif
+}
+
+static int popcountMask(const AsciiCharMask& mask)
+{
+  int count = 0;
+  for (auto word : mask) {
+    while (word) {
+      word &= word - 1;
+      count++;
+    }
+  }
+  return count;
+}
+
+void CRegExp::analyzeRequiredChars()
+{
+  requiredChars = {};
+  requiredCharsCount = 0;
+  auto sets = requiredCharsForChain(tree_root);
+  // Keep the most selective sets (fewest characters).
+  std::sort(sets.begin(), sets.end(), [](const AsciiCharMask& a, const AsciiCharMask& b) {
+    return popcountMask(a) < popcountMask(b);
+  });
+  for (const auto& set : sets) {
+    if (requiredCharsCount == MAX_REQUIRED_SETS) {
+      break;
+    }
+    bool duplicate = false;
+    for (int i = 0; i < requiredCharsCount; i++) {
+      if (requiredChars[i] == set) {
+        duplicate = true;
+        break;
+      }
+    }
+    if (!duplicate) {
+      requiredChars[requiredCharsCount++] = set;
+    }
+  }
+}
+
+void CRegExp::addRequiredChar(std::vector<AsciiCharMask>& out, wchar ch) const
+{
+  const auto value = static_cast<uint32_t>(ch);
+  if (value >= 128) {
+    return;
+  }
+  // Under /i a letter may also match a non-ASCII case variant (e.g. KELVIN SIGN for k),
+  // which the ASCII line mask cannot see.
+  if (ignoreCase && ((value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z'))) {
+    return;
+  }
+  AsciiCharMask set = {};
+  set[value >> 6] |= uint64_t(1) << (value & 63);
+  out.push_back(set);
+}
+
+std::vector<AsciiCharMask> CRegExp::requiredCharsForNode(const SRegInfo* re) const
+{
+  std::vector<AsciiCharMask> result;
+  if (!re) {
+    return result;
+  }
+  switch (re->op) {
+    case EOps::ReSymb:
+      addRequiredChar(result, re->un.symbol);
+      break;
+    case EOps::ReWord:
+      for (int i = 0; i < re->un.word->length(); i++) {
+        addRequiredChar(result, (*re->un.word)[i]);
+      }
+      break;
+    case EOps::ReBrackets:
+    case EOps::ReNamedBrackets:
+    case EOps::ReAhead:
+    case EOps::ReBehind:
+      result = requiredCharsForChain(re->un.param);
+      break;
+    case EOps::ReRangeN:
+    case EOps::ReRangeNM:
+    case EOps::ReNGRangeN:
+    case EOps::ReNGRangeNM:
+      if (re->s > 0) {
+        result = requiredCharsForChain(re->un.param);
+      }
+      break;
+    default:
+      // Character classes and meta symbols may match non-ASCII text; back
+      // references and negative look-arounds add nothing certain.
+      break;
+  }
+  return result;
+}
+
+std::vector<AsciiCharMask> CRegExp::requiredCharsForChain(const SRegInfo* re) const
+{
+  std::vector<AsciiCharMask> result;
+  for (const auto* node = re; node; node = node->next) {
+    if (node->op == EOps::ReOr) {
+      // Either branch may match: any (left ∪ right) pair is still required.
+      const auto left = requiredCharsForChain(node->un.param);
+      const auto right = requiredCharsForChain(node->next);
+      for (const auto& l : left) {
+        for (const auto& r : right) {
+          result.push_back({l[0] | r[0], l[1] | r[1]});
+        }
+      }
+      // Nested alternations multiply the pairs; keep the few most selective ones.
+      if (result.size() > static_cast<size_t>(MAX_REQUIRED_SETS)) {
+        std::sort(result.begin(), result.end(), [](const AsciiCharMask& a, const AsciiCharMask& b) {
+          return popcountMask(a) < popcountMask(b);
+        });
+        result.resize(MAX_REQUIRED_SETS);
+      }
+      break;
+    }
+    auto current = requiredCharsForNode(node);
+    result.insert(result.end(), current.begin(), current.end());
+  }
+  return result;
+}
+
+void CRegExp::collectAsciiChars(const UnicodeString& str, AsciiCharMask& mask)
+{
+  mask = {};
+  const wchar* buf = str.getBuffer();
+  if (buf == nullptr) {
+    return;
+  }
+  const int len = str.length();
+  for (int i = 0; i < len; i++) {
+    const auto value = static_cast<uint32_t>(buf[i]);
+    if (value < 128) {
+      mask[value >> 6] |= uint64_t(1) << (value & 63);
+    }
+  }
 }
 
 void CRegExp::addFirstChar(FirstChars& result, wchar ch) const
@@ -1486,7 +1653,7 @@ inline bool CRegExp::quickCheck(int toParse)
   }
 }
 
-inline bool CRegExp::parseRE(int pos)
+inline bool CRegExp::parseRE(int pos, const AsciiCharMask* subjectChars)
 {
   if (error != EError::EOK)
     return false;
@@ -1499,6 +1666,22 @@ inline bool CRegExp::parseRE(int pos)
   startChange = false;
   endChange = false;
   int toParse = pos;
+
+  if (subjectChars != nullptr) {
+    for (int i = 0; i < requiredCharsCount; i++) {
+      if (((requiredChars[i][0] & (*subjectChars)[0]) | (requiredChars[i][1] & (*subjectChars)[1])) == 0)
+        return false;
+    }
+  }
+  // An anchored pattern matches at one position only, whether or not the caller
+  // asked for a moving search.
+  const bool anchored = startAnchor != StartAnchor::None;
+  if (startAnchor == StartAnchor::LineStart && toParse != 0)
+    return false;
+#ifdef COLORERMODE
+  if (startAnchor == StartAnchor::SchemeStart && toParse != schemeStart)
+    return false;
+#endif
 
   if (!positionMoves && firstCharMaskUseful) {
     if (toParse >= end) return false;
@@ -1527,6 +1710,8 @@ inline bool CRegExp::parseRE(int pos)
       if (!skip && firstNode && !quickCheck(toParse))
         skip = true;
       if (skip) {
+        if (anchored)
+          return false;
         toParse = ++pos;
         continue;
       }
@@ -1543,7 +1728,7 @@ inline bool CRegExp::parseRE(int pos)
     }
     if (stepBudgetExceeded)
       return false;
-    if (!positionMoves)
+    if (!positionMoves || anchored)
       return false;
     toParse = ++pos;
   } while (toParse <= end);
@@ -1561,7 +1746,7 @@ void CRegExp::bindSubject(const UnicodeString* str)
 }
 
 bool CRegExp::parse(const UnicodeString* str, int pos, int eol, SMatches* mtch, int soScheme,
-                    int posMoves)
+                    int posMoves, const AsciiCharMask* subjectChars)
 {
   bool nms = positionMoves;
   if (posMoves != -1)
@@ -1572,7 +1757,7 @@ bool CRegExp::parse(const UnicodeString* str, int pos, int eol, SMatches* mtch, 
   bindSubject(str);
   end = eol;
   matches = mtch;
-  bool result = parseRE(pos);
+  bool result = parseRE(pos, subjectChars);
   positionMoves = nms;
   return result;
 }
@@ -1585,7 +1770,7 @@ bool CRegExp::parse(const UnicodeString* str, SMatches* mtch)
   schemeStart = 0;
 #endif
   matches = mtch;
-  return parseRE(0);
+  return parseRE(0, nullptr);
 }
 
 /////////////////////////////////////////////////////////////////

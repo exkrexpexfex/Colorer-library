@@ -727,6 +727,136 @@ TEST_CASE("CRegExp canStartWith", "[cregexp]")
   }
 }
 
+TEST_CASE("CRegExp start anchor rejects other positions", "[cregexp]")
+{
+  SECTION("^ matches only at position 0")
+  {
+    require_match(u"/^abc/", u"abcabc", 0, 3);
+    require_no_match(u"/^abc/", u"abcabc", false, 3);
+    // moving search from 0 on a non-matching head: only offset 0 is tried
+    require_no_match(u"/^abc/", u"xabc", true, 0);
+    require_match(u"/^abc/", u"abcx", 0, 3, true, 0);
+  }
+
+  SECTION("^ inside leading brackets is still an anchor")
+  {
+    require_match(u"/(^\\s*)(#)/", u"  #x", 0, 3);
+    require_no_match(u"/(^\\s*)(#)/", u"x #", true, 1);
+  }
+
+  SECTION("^ with /m still matches after a line break")
+  {
+    require_match(u"/^abc/m", u"x\nabc", 2, 5, false, 2);
+    require_match(u"/^abc/m", u"x\nabc", 2, 5, true, 1);
+  }
+
+  SECTION("alternation at the front is not anchored")
+  {
+    require_match(u"/^abc|xyz/", u"..xyz", 2, 5, false, 2);
+  }
+
+  SECTION("~ matches only at scheme start")
+  {
+    const auto pre = ustr(u"/~\\s*#/");
+    const auto str = ustr(u"x  #  #");
+    CRegExp re(&pre);
+    REQUIRE(re.isOk());
+    SMatches match;
+    REQUIRE(parse_re(re, str, match, false, 1, 1));
+    REQUIRE(match.e[0] == 4);
+    REQUIRE_FALSE(parse_re(re, str, match, false, 4, 1));
+    REQUIRE_FALSE(parse_re(re, str, match, true, 2, 1));
+  }
+}
+
+TEST_CASE("CRegExp required characters prefilter", "[cregexp]")
+{
+  auto parse_with_line = [](const char16_t* pattern, const char16_t* text, int pos = 0) {
+    const auto pre = ustr(pattern);
+    const auto str = ustr(text);
+    CRegExp re(&pre);
+    INFO("pattern: " << UStr::to_stdstr(&pre) << " text: " << UStr::to_stdstr(&str));
+    REQUIRE(re.isOk());
+    AsciiCharMask chars;
+    CRegExp::collectAsciiChars(str, chars);
+    SMatches match;
+    return re.parse(&str, pos, str.length(), &match, 0, 1, &chars);
+  };
+
+  SECTION("collectAsciiChars ignores non-ASCII")
+  {
+    AsciiCharMask chars;
+    CRegExp::collectAsciiChars(ustr(u"a@\u00e9"), chars);
+    REQUIRE((chars[1] & (uint64_t(1) << ('a' - 64))) != 0);
+    REQUIRE((chars[1] & (uint64_t(1) << ('@' - 64))) != 0);
+    REQUIRE((chars[1] & (uint64_t(1) << ('b' - 64))) == 0);
+    REQUIRE(chars[0] == 0);
+  }
+
+  SECTION("literal present and absent")
+  {
+    REQUIRE(parse_with_line(u"/\\w+\\@\\w+/", u"mail me@host"));
+    REQUIRE_FALSE(parse_with_line(u"/\\w+\\@\\w+/", u"mail me at host"));
+    REQUIRE(parse_with_line(u"/x/", u"x"));
+  }
+
+  SECTION("optional and repeated-zero groups are not required")
+  {
+    REQUIRE(parse_with_line(u"/(x\\@)?y/", u"y"));
+    REQUIRE(parse_with_line(u"/(\\@)*y/", u"y"));
+    REQUIRE(parse_with_line(u"/(\\@){0,3}y/", u"y"));
+    REQUIRE(parse_with_line(u"/\\@?y/", u"y"));
+  }
+
+  SECTION("alternation requires one branch only")
+  {
+    REQUIRE(parse_with_line(u"/(a\\@|b\\#)/", u"b#"));
+    REQUIRE(parse_with_line(u"/a\\@|b\\#/", u"a@"));
+    REQUIRE(parse_with_line(u"/(x|)\\%/", u"%"));
+    REQUIRE_FALSE(parse_with_line(u"/(a\\@|b\\#)/", u"ab"));
+  }
+
+  SECTION("classes, meta symbols and lookarounds do not add requirements")
+  {
+    REQUIRE(parse_with_line(u"/[\\@]?y/", u"y"));
+    REQUIRE(parse_with_line(u"/\\d?y/", u"y"));
+    REQUIRE(parse_with_line(u"/y(\\@)?!/", u"y"));
+    REQUIRE(parse_with_line(u"/(\\@)?~1y/", u"y"));
+    REQUIRE(parse_with_line(u"/(y)\\1/", u"yy"));
+  }
+
+  SECTION("positive lookahead content is required")
+  {
+    REQUIRE(parse_with_line(u"/y(\\@)?=/", u"y@"));
+    REQUIRE_FALSE(parse_with_line(u"/y(\\@)?=/", u"y"));
+  }
+
+  SECTION("case-insensitive letters are not required")
+  {
+    REQUIRE(parse_with_line(u"/k/i", u"K"));
+    REQUIRE(parse_with_line(u"/a1/i", u"A1"));
+    REQUIRE_FALSE(parse_with_line(u"/a1/i", u"A2"));
+  }
+
+  SECTION("line mask covers text outside [pos, eol)")
+  {
+    const auto pre = ustr(u"/\\@/");
+    const auto str = ustr(u"@ x");
+    CRegExp re(&pre);
+    AsciiCharMask chars;
+    CRegExp::collectAsciiChars(str, chars);
+    SMatches match;
+    REQUIRE_FALSE(re.parse(&str, 1, str.length(), &match, 0, 0, &chars));
+    REQUIRE(re.parse(&str, 0, str.length(), &match, 0, 0, &chars));
+  }
+
+  SECTION("no mask keeps the plain matcher")
+  {
+    require_no_match(u"/\\w+\\@\\w+/", u"mail me at host");
+    require_match(u"/\\w+\\@\\w+/", u"me@host", 0, 7);
+  }
+}
+
 TEST_CASE("CRegExp stack reuse after clearRegExpStack", "[cregexp]")
 {
   const auto pre = ustr(u"/(a|b)+c/");
