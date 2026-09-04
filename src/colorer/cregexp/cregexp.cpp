@@ -1208,6 +1208,9 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
   ReAction action = rea_None;
 
   if (!re) {
+    if (prev == nullptr) {
+      return false;
+    }
     re = prev->parent;
     leftenter = false;
   }
@@ -1276,9 +1279,9 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
                 continue;
               }
             }
-            else {
+            else if (wlen != 0) {
               const wchar* wordBuf = re->un.word->getBuffer();
-              if (wlen != 0 && wordBuf == nullptr) {
+              if (wordBuf == nullptr) {
                 check_stack(false, re, prev, toParse, leftenter, action);
                 continue;
               }
@@ -1586,22 +1589,34 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
           break;
         case rea_RangeN_step2:
           action = rea_None;
+          if (re == nullptr) {
+            return false;
+          }
           insert_stack(re, prev, toParse, leftenter, rea_True, rea_False, re->next, re, toParse);
           continue;
           break;
         case rea_RangeNM_step2:
           action = rea_None;
+          if (re == nullptr) {
+            return false;
+          }
           insert_stack(re, prev, toParse, leftenter, rea_True, rea_RangeNM_step3, re->next, re, toParse);
           continue;
           break;
         case rea_RangeNM_step3:
           action = rea_None;
+          if (re == nullptr) {
+            return false;
+          }
           re->param1++;
           check_stack(false, re, prev, toParse, leftenter, action);
           continue;
           break;
         case rea_NGRangeN_step2:
           action = rea_None;
+          if (re == nullptr) {
+            return false;
+          }
           if (re->param0)
             re->param0--;
           re = re->un.param;
@@ -1610,16 +1625,25 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
           break;
         case rea_NGRangeNM_step2:
           action = rea_None;
+          if (re == nullptr) {
+            return false;
+          }
           insert_stack(re, prev, toParse, leftenter, rea_True, rea_NGRangeNM_step3, re->un.param, nullptr,
                        toParse);
           continue;
           break;
         case rea_NGRangeNM_step3:
           action = rea_None;
+          if (re == nullptr) {
+            return false;
+          }
           re->param1++;
           check_stack(false, re, prev, toParse, leftenter, action);
           continue;
           break;
+      }
+      if (re == nullptr) {
+        return false;
       }
       if (!re->next) {
         re = re->parent;
@@ -1709,7 +1733,7 @@ inline bool CRegExp::quickCheck(int toParse)
 // positionMoves slides the start; a start-anchor still fails outright.
 inline bool CRegExp::parseRE(int pos, const AsciiCharMask* subjectChars)
 {
-  if (error != EError::EOK)
+  if (error != EError::EOK || tree_root == nullptr)
     return false;
 
   count_elem = 0;
