@@ -110,6 +110,9 @@ struct SMatches
   int cnMatch;
 };
 
+/// Bit per ASCII code point (0..127). Used for the first-char and required-char prefilters.
+using AsciiCharMask = std::array<uint64_t, 2>;
+
 /** Regular expressions internal tree node.
     @ingroup cregexp
 */
@@ -140,6 +143,10 @@ class SRegInfo
   int e = 0;
 
   EOps op = EOps::ReEmpty;
+  // First ASCII characters of the left ReOr branch. Used to skip that branch
+  // when the subject cannot start it; unused unless branchFirstUseful.
+  AsciiCharMask branchFirst = {};
+  bool branchFirstUseful = false;
 };
 
 enum ReAction {
@@ -169,8 +176,6 @@ struct StackElem
 #define INIT_MEM_SIZE 512
 #define MEM_INC 128
 
-/// Bit per ASCII code point (0..127). Used for the first-char and required-char prefilters.
-using AsciiCharMask = std::array<uint64_t, 2>;
 /** Regular Expression compiler and matcher.
     Colorer regular expressions library cregexp.
 
@@ -402,6 +407,7 @@ class CRegExp
   int maxLenOfChain(const SRegInfo* re) const;
   void analyzeMaxLen();
   void analyzeRequiredChars();
+  void analyzeBranchFirstChars(SRegInfo* re);
   void optimize();
   bool quickCheck(int toParse);
   bool isWordBoundary(int toParse);

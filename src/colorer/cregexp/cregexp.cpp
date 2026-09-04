@@ -228,6 +228,7 @@ void CRegExp::optimize()
   analyzeEndAnchor();
   analyzeMaxLen();
   analyzeRequiredChars();
+  analyzeBranchFirstChars(tree_root);
 }
 
 void CRegExp::analyzeStartAnchor()
@@ -652,6 +653,44 @@ CRegExp::FirstChars CRegExp::analyzeFirstChars(const SRegInfo* re) const
     if (node->op == EOps::ReOr) break;
   }
   return result;
+}
+
+void CRegExp::analyzeBranchFirstChars(SRegInfo* re)
+{
+  for (SRegInfo* node = re; node; node = node->next) {
+    switch (node->op) {
+      case EOps::ReOr: {
+        const auto first = analyzeFirstChars(node->un.param);
+        // Descend through grouping so (\M\s+) is treated like \M\s+. A
+        // zero-width head (\m \M \b lookaround ^ $ empty) must not be skipped:
+        // \M in a failed alternative still bounds group 0 for a later one.
+        const SRegInfo* atom = node->un.param;
+        while (atom && (atom->op == EOps::ReBrackets || atom->op == EOps::ReNamedBrackets)) {
+          atom = atom->un.param;
+        }
+        const bool leadingNullable = !atom || firstCharsForNode(atom).nullable;
+        node->branchFirst = first.mask;
+        node->branchFirstUseful = !leadingNullable && !first.nullable &&
+          (first.mask[0] != ~uint64_t(0) || first.mask[1] != ~uint64_t(0));
+        analyzeBranchFirstChars(node->un.param);
+        break;
+      }
+      case EOps::ReBrackets:
+      case EOps::ReNamedBrackets:
+      case EOps::ReAhead:
+      case EOps::ReNAhead:
+      case EOps::ReBehind:
+      case EOps::ReNBehind:
+      case EOps::ReRangeN:
+      case EOps::ReRangeNM:
+      case EOps::ReNGRangeN:
+      case EOps::ReNGRangeNM:
+        analyzeBranchFirstChars(node->un.param);
+        break;
+      default:
+        break;
+    }
+  }
 }
 
 EError CRegExp::setStructs(SRegInfo*& re, const UnicodeString& expr, int from, int to, int& retPos)
@@ -1565,6 +1604,12 @@ bool CRegExp::lowParse(SRegInfo* re, SRegInfo* prev, int toParse)
             if (!leftenter) {
               while (re->next) re = re->next;
               break;
+            }
+            if (re->branchFirstUseful && toParse < end) {
+              const auto ch = static_cast<uint32_t>(buf[toParse]);
+              if (ch < 128 && !(re->branchFirst[ch >> 6] & (uint64_t(1) << (ch & 63)))) {
+                break;
+              }
             }
             {
               insert_stack(&re, &prev, &toParse, &leftenter, rea_True, rea_Break, &re->un.param, nullptr, toParse);

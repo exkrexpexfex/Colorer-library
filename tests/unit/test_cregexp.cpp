@@ -956,6 +956,66 @@ TEST_CASE("CRegExp required characters prefilter", "[cregexp]")
   }
 }
 
+TEST_CASE("CRegExp alternation first-char dispatcher", "[cregexp]")
+{
+  SECTION("left alternative wins even when a longer right one also matches")
+  {
+    require_match(u"/(a|ab)/", u"ab", 0, 1);
+  }
+
+  SECTION("empty alternative")
+  {
+    require_match(u"/(a|)/", u"a", 0, 1);
+    require_match(u"/(a|)/", u"b", 0, 0);
+    require_match(u"/(a|)/", u"", 0, 0);
+    require_match(u"/(|a)/", u"a", 0, 0);
+  }
+
+  SECTION("ignore case")
+  {
+    require_match(u"/(abc|xyz)/i", u"ABC", 0, 3);
+    require_match(u"/(abc|xyz)/i", u"XyZ", 0, 3);
+    require_no_match(u"/(abc|xyz)/i", u"qrs");
+  }
+
+  SECTION("non-ASCII text takes the unfiltered path")
+  {
+    require_no_match(u"/(a|b)/", u"\u00e9");
+    require_match(u"/(a|b)/", u"\u00e9a", 1, 2, true);
+    require_match(u"/(\u00e9|b)/", u"\u00e9", 0, 1);
+    require_match(u"/(\u00e9|b)/", u"b", 0, 1);
+  }
+
+  SECTION("zero-width prefix is nullable and is not dispatched")
+  {
+    require_match(u"/(\\b|x)/", u"a", 0, 0);
+    require_match(u"/(\\bfoo|bar)/", u"foo", 0, 3);
+    require_match(u"/(\\bfoo|bar)/", u"bar", 0, 3);
+    require_match(u"/(x?=|a)/", u"x", 0, 0);
+    require_match(u"/(x?=|a)/", u"a", 0, 1);
+  }
+
+  SECTION("\\M in a failed alternative still bounds group 0")
+  {
+    const auto pre = ustr(u"/\\M\\s+|;/");
+    const auto str = ustr(u";");
+    CRegExp re(&pre);
+    REQUIRE(re.isOk());
+    SMatches match;
+    REQUIRE(re.parse(&str, &match));
+    REQUIRE(match.s[0] == 0);
+    REQUIRE(match.e[0] == 0);
+  }
+
+  SECTION("nested alternation")
+  {
+    require_match(u"/((a|b)|c)/", u"a", 0, 1);
+    require_match(u"/((a|b)|c)/", u"b", 0, 1);
+    require_match(u"/((a|b)|c)/", u"c", 0, 1);
+    require_no_match(u"/((a|b)|c)/", u"d");
+  }
+}
+
 TEST_CASE("CRegExp stack reuse after clearRegExpStack", "[cregexp]")
 {
   const auto pre = ustr(u"/(a|b)+c/");
