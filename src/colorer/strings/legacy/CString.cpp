@@ -51,7 +51,7 @@ CString::CString(const byte* stream, int32_t size, int def_encoding)
         }
         if (cps || strncmp((char*)stream + p, "encoding=", 9) != 0) continue;
         p += 9;
-        if (!cps && (stream[p] == '\"' || stream[p] == '\'')) {
+        if (stream[p] == '\"' || stream[p] == '\'') {
           p++;
           cps = p;
         } else
