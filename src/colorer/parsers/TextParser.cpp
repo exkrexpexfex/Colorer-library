@@ -17,6 +17,7 @@ void TextParser::clearCache()
 
 int TextParser::parse(int from, int num, TextParseMode mode)
 {
+  // Shared lock: a concurrent HrcLibrary::loadFileType cannot mutate schemes.
   std::shared_lock<std::shared_mutex> hrc_lock;
   FileType* type = pimpl->currentFileType();
   if (type != nullptr && type->pimpl->library_access != nullptr) {

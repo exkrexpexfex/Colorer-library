@@ -32,6 +32,9 @@ class SchemeImpl : public Scheme
   }
 
  protected:
+  // Per ASCII first character: searchNodes[nodeIndexes[offsets[ch] .. offsets[ch+1]))
+  // are the only nodes that canStartWith(ch). Built in HrcLibrary::updateLinks.
+  // Absent when the scheme has <2 nodes or the table would not shrink the scan.
   struct SearchDispatch
   {
     std::array<uint32_t, 129> offsets = {};

@@ -1186,6 +1186,9 @@ void HrcLibrary::Impl::updateLinks()
     }
   }
 
+  // Flatten static inherit into searchNodes, merge keyword lists, then
+  // build per-ASCII candidate slices (searchDispatch). Virtual inherit
+  // stays as SNT_INHERIT and is resolved at parse time via VTList.
   std::unordered_map<const SchemeImpl*, uint8_t> searchState;
   for (const auto& [key, scheme] : schemeHash) {
     buildSearchNodes(scheme, searchState);

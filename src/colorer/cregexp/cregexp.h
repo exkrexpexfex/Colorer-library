@@ -231,6 +231,36 @@ struct StackElem
    - Explicit parse stack (grows as needed and is reused by all CRegExp
      instances on the same thread).
 
+\par 3. Matching pipeline (hot path).
+
+   setRE compiles an SRegInfo tree; optimize() then fills skip facts used
+   by parseRE / mayMatch before the NFA (lowParse) runs:
+
+   - firstCharMask / firstNode — first consuming ASCII set and first
+     literal/class/word (quickCheck). Unused if the prefix is nullable.
+   - startAnchor — pattern begins with ^ (not /m) or ~; only pos==0 or
+     pos==schemeStart can match, even with positionMoves.
+   - endAnchor + maxLen — pattern ends with $ (not /m, no top-level |).
+     A match cannot start more than maxLen characters before eol.
+     maxLen==-1 if * / + / \\N / \\y make length unbounded.
+     $ means toParse==eol (the parse() bound, not str->length()).
+   - requiredChars — up to 4 ASCII sets that must appear somewhere in
+     the subject (TextParser passes a per-line mask). /i letters omitted.
+   - ReOr.branchFirst — skip a | branch in lowParse when the current
+     ASCII char cannot start it. Left unused if the branch is nullable
+     or starts with a zero-width op (\\m \\M \\b lookaround ^ $): those
+     still have side effects (\\M bounds group 0 for a later alternative).
+
+   parse() pins parseBuf to UnicodeString::getBuffer() so the NFA does
+   not index the string per step. Each offset resets \\m/\\M and captures.
+   The backtracking stack is thread_local and shared by every CRegExp on
+   that thread; count_elem is reset per parseRE. Do not clear it from
+   ParserFactory teardown. parseStepLimit (default 1e6) counts NFA steps
+   in one parse(); exceeding it fails the match.
+
+   TextParser calls mayMatch() with the same pos/eol/schemeStart/line
+   mask before parse() to avoid entering the NFA.
+
     @ingroup cregexp
 */
 class CRegExp

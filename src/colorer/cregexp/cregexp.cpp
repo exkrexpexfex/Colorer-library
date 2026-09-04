@@ -179,6 +179,8 @@ EError CRegExp::setRELow(const UnicodeString& expr)
   return EError::EOK;
 }
 
+// Fill skip facts for parseRE / mayMatch: first-char mask, start/end
+// anchors, maxLen, required ASCII sets, per-| branchFirst. See class docs.
 void CRegExp::optimize()
 {
   SRegInfo* next = tree_root;
@@ -1703,6 +1705,8 @@ inline bool CRegExp::quickCheck(int toParse)
   }
 }
 
+// Cheap rejects (required chars, ^/~/$+maxLen, first-char), then NFA.
+// positionMoves slides the start; a start-anchor still fails outright.
 inline bool CRegExp::parseRE(int pos, const AsciiCharMask* subjectChars)
 {
   if (error != EError::EOK)
