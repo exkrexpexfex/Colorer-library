@@ -52,7 +52,7 @@ jobs:
           docker build -f ci/Dockerfile.gcc7-test -t tempx:latest .
 
   ubuntu-gcc:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -67,7 +67,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install dependency
-        run: sudo apt-get -y install ninja-build libicu-dev zlib1g-dev libminizip-dev libxml2-dev
+        run: sudo apt update && sudo apt -y install ninja-build libicu-dev zlib1g-dev libminizip-dev libxml2-dev
 
       - name: Create Build folder
         run: mkdir -p _build

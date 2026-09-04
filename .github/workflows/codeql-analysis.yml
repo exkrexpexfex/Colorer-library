@@ -36,7 +36,7 @@ jobs:
           languages: ${{ matrix.language }}
 
       - name: Install dependency
-        run: sudo apt-get -y install ninja-build libicu-dev libxml2-dev zlib1g-dev libminizip-dev
+        run: sudo apt update && sudo apt -y install ninja-build libicu-dev libxml2-dev zlib1g-dev libminizip-dev
 
       - name: Create Build folder
         run: mkdir -p _build
